@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<header class="bg-dark py-5">
+    <div class="container px-4 px-lg-5 my-5">
+        <div class="text-center text-white">
+            <h1 class="display-4 fw-bolder">Các Danh Mục</h1>
+            <p class="lead fw-normal text-white-50 mb-0">Lựa chọn danh mục bạn quan tâm...</p>
+        </div>
+    </div>
+</header>
+
+<div class="container my-5">
+    <div class="row g-3">
+        {% for category in categories %}
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+            <a href="{% url 'category' category %}" class="text-decoration-none">
+                <div class="card category-card d-flex align-items-center p-3">
+                    <img src="{{ category.image.url }}" alt="{{ category }}">
+                    <span class="category-title fw-semibold"
+                        style="text-transform: capitalize; color: #000; font-size: 15px;">{{ category }}</span>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+
+<div class="container mb-4">
+    <h5 class="fw-bold mb-3">Chọn theo tiêu chí</h5>
+    <div class="d-flex flex-wrap gap-2">
+
+        <div class="dropdown">
+            <button class="btn btn-light border dropdown-toggle" data-bs-toggle="dropdown">Bộ lọc</button>
+        </div>
+
+        <!-- Giá -->
+        <div style="position: relative; display: inline-block;">
+            <button class="btn btn-light border" onclick="togglePriceFilter()">Xem theo giá</button>
+
+            <!-- Modal lọc giá -->
+            <div id="priceFilterModal" class="card shadow p-3"
+                style="display: none; position: absolute; top: 110%; left: 0; z-index: 999; width: 350px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); height: 220px">
+                <h6 class="mb-3 text-center fw-semibold">Hãy chọn mức giá phù hợp với bạn</h6>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <input type="text" id="minPrice" class="form-control me-2 price-box" readonly>
+                    <input type="text" id="maxPrice" class="form-control price-box" readonly>
+                </div>
+
+                <!-- Thanh slider -->
+                <div class="d-flex flex-column gap-1">
+                    <input type="range" min="0" max="125000000" step="1000000" value="0" id="rangeMin"
+                        oninput="syncSlider()">
+                    <input type="range" min="0" max="125000000" step="1000000" value="125000000" id="rangeMax"
+                        oninput="syncSlider()">
+                </div>
+
+                <div class="mt-3 d-flex justify-content-between">
+                    <button class="btn btn-light" onclick="togglePriceFilter()">Đóng</button>
+                    <button class="btn btn-danger" onclick="submitPriceFilter()">Xem kết quả</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CPU -->
+        <div class="dropdown">
+            <button class="btn btn-light border dropdown-toggle" data-bs-toggle="dropdown">CPU</button>
+            <ul class="dropdown-menu">
+                <!-- {% for cpu in cpus %}
+                {% endfor %} -->
+                <li><a class="dropdown-item" href="">Intel Core i3</a></li>
+                <li><a class="dropdown-item" href="">Intel Core i5</a></li>
+                <li><a class="dropdown-item" href="">Intel Core i7</a></li>
+                <li><a class="dropdown-item" href="">Intel Core i9</a></li>
+                <li><a class="dropdown-item" href="">Intel Celeron / Pentinum</a></li>
+                <li><a class="dropdown-item" href="">AMD Ryzen 5</a></li>
+                <li><a class="dropdown-item" href="">AMD Ryzen 7</a></li>
+                <li><a class="dropdown-item" href="">AMD Ryzen 9</a></li>
+                <li><a class="dropdown-item" href="">Apple M2</a></li>
+                <li><a class="dropdown-item" href="">Apple M3</a></li>
+            </ul>
+        </div>
+
+        <!-- RAM -->
+        <div class="dropdown">
+            <button class="btn btn-light border dropdown-toggle" data-bs-toggle="dropdown">Dung lượng RAM</button>
+            <ul class="dropdown-menu">
+                <!-- {% for ram in rams %}
+                <li><a class="dropdown-item" href="?ram={{ ram }}">{{ ram }}</a></li>
+                {% endfor %} -->
+                <li><a class="dropdown-item" href="">4GB</a></li>
+                <li><a class="dropdown-item" href="">8GB</a></li>
+                <li><a class="dropdown-item" href="">16GB</a></li>
+                <li><a class="dropdown-item" href="">32GB</a></li>
+                <li><a class="dropdown-item" href="">64GB</a></li>
+                <li><a class="dropdown-item" href="">128GB</a></li>
+            </ul>
+        </div>
+
+        <!-- Ổ cứng -->
+        <div class="dropdown">
+            <button class="btn btn-light border dropdown-toggle" data-bs-toggle="dropdown">Ổ cứng</button>
+            <ul class="dropdown-menu">
+                <!-- {% for storage in storages %}
+                <li><a class="dropdown-item" href="?storage={{ storage }}">{{ storage }}</a></li>
+                {% endfor %} -->
+                <li><a class="dropdown-item" href="">256GB</a></li>
+                <li><a class="dropdown-item" href="">512GB</a></li>
+                <li><a class="dropdown-item" href="">1TB</a></li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+<div class="container mb-5 d-flex justify-content-between align-items-center">
+    <h5 class="fw-bold mb-2">Sắp xếp theo</h5>
+    <div class="d-flex flex-wrap gap-2">
+        {% with request.GET.order_by as order_by %}
+        <button class="btn btn-outline-primary custom-sort-button {% if order_by == 'popular' %}active{% endif %}"
+            onclick="sortProducts(this, 'popular')">
+            <i class="bi bi-star"></i> Phổ biến
+        </button>
+        <button class="btn btn-light custom-sort-button border {% if order_by == 'promotion' %}active{% endif %}"
+            onclick="sortProducts(this, 'promotion')">
+            <i class="bi bi-percent"></i> Khuyến mãi HOT
+        </button>
+        <button class="btn btn-light custom-sort-button border {% if order_by == 'price-asc' %}active{% endif %}"
+            onclick="sortProducts(this, 'price-asc')">
+            <i class="bi bi-sort-down"></i> Giá Thấp - Cao
+        </button>
+        <button class="btn btn-light custom-sort-button border {% if order_by == 'price-desc' %}active{% endif %}"
+            onclick="sortProducts(this, 'price-desc')">
+            <i class="bi bi-sort-up"></i> Giá Cao - Thấp
+        </button>
+        {% endwith %}
+    </div>
+</div>
+
+<!-- Section show product-->
+<section class="pb-5">
+    <div class="container px-4 mt-3">
+        <div class="row justify-content-start">
+            {% for product in products %}
+            {% if product.is_sale %}
+            <a href="{% url 'product' product.id %}" class="text-decoration-none link-card-product mb-5">
+                <div class="card-product">
+                    {% for sale in active_sale %}
+                    {% if sale.category == product.category %}
+                    <div class="sale">Giảm {{ sale.discount_percentage|floatformat:0|intcomma }}%</div>
+                    {% endif %}
+                    {% endfor %}
+                    <div class="installment"><i class="bi bi-check2-all"></i></div>
+                    <div class="img-card">
+                        <img class="card-img-top" src="{{ product.image.url }}" alt="{{ product.name }}" />
+                    </div>
+                    <div class="content">
+                        <div class="title-card">{{ product.name }}</div>
+                        <div class="price-card">
+                            {{ product.sale_price|floatformat:0|intcomma }}đ <del>{{product.price|floatformat:0|intcomma }}đ</del>
+                        </div>
+                        <div class="ratings">
+                            <div class="stars">★★★★★</div>
+                            <button type="button" class="like" id="add-wishlist" value="{{ product.id }}">
+                                <i class="fa-regular fa-heart me-1"></i>Yêu thích
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <a href="{% url 'product' product.id %}" class="text-decoration-none link-card-product mb-5">
+                <div class="card-product">
+                    <div class="installment"><i class="bi bi-check2-all"></i></div>
+                    <div class="img-card">
+                        <img class="card-img-top" src="{{ product.image.url }}" alt="{{ product.name }}" />
+                    </div>
+                    <div class="content">
+                        <div class="title-card">{{ product.name }}</div>
+                        <div class="price-card">
+                            {{ product.price|floatformat:0|intcomma }}đ
+                        </div>
+                        <div class="ratings">
+                            <div class="stars">★★★★★</div>
+                            <button type="button" class="like" id="add-wishlist" value="{{ product.id }}">
+                                <i class="fa-regular fa-heart me-1"></i>Yêu thích
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', syncSlider);
+
+    function togglePriceFilter() {
+        const modal = document.getElementById('priceFilterModal');
+        modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function syncSlider() {
+        const min = parseInt(document.getElementById('rangeMin').value);
+        const max = parseInt(document.getElementById('rangeMax').value);
+
+        document.getElementById('minPrice').value = formatCurrency(Math.min(min, max));
+        document.getElementById('maxPrice').value = formatCurrency(Math.max(min, max));
+    }
+
+    function formatCurrency(value) {
+        return value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+    }
+
+    function submitPriceFilter() {
+        const min = Math.min(
+            parseInt(document.getElementById('rangeMin').value),
+            parseInt(document.getElementById('rangeMax').value)
+        );
+        const max = Math.max(
+            parseInt(document.getElementById('rangeMin').value),
+            parseInt(document.getElementById('rangeMax').value)
+        );
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('price_min', min);
+        url.searchParams.set('price_max', max);
+        window.location.href = url;
+    }
+
+    function sortProducts(button, orderBy) {
+        document.querySelectorAll('.custom-sort-button').forEach(btn => {
+            btn.classList.remove('active');
+
+            // Cập nhật URL với tham số order_by
+            const url = new URL(window.location.href);
+            url.searchParams.set('order_by', orderBy);
+            window.location.href = url;
+        });
+        button.classList.add('active');
+
+        console.log("Sắp xếp theo:", orderBy);
+    }
+</script>
+{% endblock %}

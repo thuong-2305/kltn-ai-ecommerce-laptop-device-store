@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.2.1/owl.carousel.js"></script>
+
+
+<!-- Header-->
+<header class="bg-dark py-5">
+    <div class="container d-flex justify-content-center align-items-center">
+        <div class="banner-content">
+            <h1 class="banner-title text-white fw-semibold">Quà công nghệ mới</h1>
+            <p class="banner-description text-white">Khám phá những tiện ích và quà tặng công nghệ mới nhất dành cho mọi người!</p>
+            <a href="#" class="btn btn-outline-primary">Mua ngay</a>
+            <p class="small-text text-white mt-4">Khuyến mãi có giới hạn!</p>
+        </div>
+        <div class="image-container ms-3">
+            <img src="../../static/assets/Banner-Slider.png" alt="Tech Gift" style="width:300px; height: 300px">
+        </div>
+    </div>
+</header>
+
+<div class="discount-banner mt-2">
+    {% if active_sale %}
+    <div class="discount-slider mt-0 mb-0 p-3 rounded w-100">
+        <div class="swiper">
+            <div class="swiper-wrapper">
+                {% for sale in active_sale %}
+                <div class="swiper-slide discount-category py-2">
+                    <h5 class="category-name text-danger">🔥 {{ sale.category.name | upper }} <span class="fw-bold">Giảm đến {{ sale.discount_percentage|floatformat:0|intcomma }}%</span> 🔥</h5>
+                    <p class="small-text text-dark">Danh mục giảm giá lớn dành cho {{ sale.category.name }} !</p>
+                    <a href="{% url 'category' sale.category %}" class="btn btn-light">Xem Ưu đãi</a>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Them vui -->
+<div class="container info-bar mt-5">
+    <div class="info-item">
+        <div class="hover-container">
+            <img src="../../static/assets/delivery-icon.png" alt="Delivery Icon" class="info-icon top-icon">
+            <img src="../../static/assets/delivery-icon.png" alt="New Delivery Icon" class="info-icon bottom-icon">
+        </div>  
+        <div>
+            <strong>Giao hàng</strong><br>
+            <span>từ 20K</span>
+        </div>
+    </div>
+    <div class="info-divider"></div>
+    <div class="info-item">
+        <div class="hover-container">
+            <img src="../../static/assets/feedback-icon.png" alt="Feedback Icon" class="info-icon top-icon">
+            <img src="../../static/assets/feedback-icon.png" alt="Feedback Icon" class="info-icon bottom-icon">
+        </div>
+        <div>
+            <strong>99% Khách hàng</strong><br>
+            <span>phản hồi</span>
+        </div>
+    </div>
+    <div class="info-divider"></div>
+    <div class="info-item">
+        <div class="hover-container">
+            <img src="../../static/assets/return-icon.png" alt="Return Icon" class="info-icon top-icon">
+            <img src="../../static/assets/return-icon.png" alt="Return Icon" class="info-icon bottom-icon">
+        </div>
+        <div>
+            <strong>365 Ngày</strong><br>
+            <span>trả miễn phí</span>
+        </div>
+    </div>
+    <div class="info-divider"></div>
+    <div class="info-item">
+        <div class="hover-container">
+            <img src="../../static/assets/payment-icon.png" alt="Payment Icon" class="info-icon top-icon">
+            <img src="../../static/assets/payment-icon.png" alt="Payment Icon" class="info-icon bottom-icon">
+        </div>
+        <div>
+            <strong>Thanh toán</strong><br>
+            <span>an toàn</span>
+        </div>
+    </div>
+    <div class="info-divider"></div>
+    <div class="info-item">
+        <div class="hover-container">
+            <img src="../../static/assets/best-brands-icon.png" alt="Brands Icon" class="info-icon top-icon">
+            <img src="../../static/assets/best-brands-icon.png" alt="Brands Icon" class="info-icon bottom-icon">
+        </div>
+        <div>
+            <strong>Tốt nhất</strong><br>
+            <span>Các thương hiệu</span>
+        </div>
+    </div>
+</div>
+
+<div class="content">
+    <div class="site-section bg-left-half">
+        <div class="container owl-2-style">
+            <h2 class="pt-2 pb-3 fw-semibold"><span class="text-danger fw-bold">TOP</span> sản phẩm bán chạy</h2>
+            <div class="owl-carousel owl-2">
+                {% for product in top_products %}
+                {% if product.is_sale %}
+                <a href="{% url 'product' product.id %}" class="text-decoration-none link-card-product mb-5">
+                    <div class="card-product">
+                        <div class="sale-hot">HOT</div>
+                        {% for sale in active_sale %}
+                        {% if sale.category == product.category %}
+                        <div class="sale">Giảm {{ sale.discount_percentage|floatformat:0|intcomma }}%</div>
+                        {% endif %}
+                        {% endfor %} 
+                        <div class="installment"><i class="bi bi-check2-all"></i></div>   
+                        <div class="img-card">
+                            <img class="card-img-top" src="{{ product.image.url }}" alt="{{ product.name }}" />
+                        </div>
+                        <div class="content">
+                            <div class="title-card">{{ product.name }}</div>
+                            <div class="price-card">
+                                {{ product.sale_price|floatformat:0|intcomma }}đ <del>{{ product.price|floatformat:0|intcomma }}đ</del>
+                            </div>
+                            <div class="ratings">
+                                <div class="stars">★★★★★</div>
+                                <button type="button" class="like" id="add-wishlist" value="{{ product.id }}">
+                                    <i class="fa-regular fa-heart me-1"></i>Yêu thích
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% else %}
+                <a href="{% url 'product' product.id %}" class="text-decoration-none link-card-product mb-5">
+                    <div class="card-product">
+                        <div class="sale-hot">HOT</div>
+                        <div class="installment"><i class="bi bi-check2-all"></i></div> 
+                        <div class="img-card">
+                            <img class="card-img-top" src="{{ product.image.url }}" alt="{{ product.name }}" />
+                        </div>
+                        <div class="content">
+                            <div class="title-card">{{ product.name }}</div>
+                            <div class="price-card">
+                                {{ product.price|floatformat:0|intcomma }}đ
+                            </div>
+                            <div class="ratings">
+                                <div class="stars">★★★★★</div>
+                                <button type="button" class="like" id="add-wishlist" value="{{ product.id }}">
+                                    <i class="fa-regular fa-heart me-1"></i>Yêu thích
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advertiment -->
+<div class="container py-5">
+    <div class="row g-4">
+      <!-- First Card -->
+      <div class="col-md-6">
+        <div class="card card-custom">
+          <div 
+            class="card-image" 
+            style="background-image: url('https://i.pinimg.com/736x/14/a6/cb/14a6cbaaac0a16cac19bb9f11c0b9495.jpg');"></div>
+        </div>
+      </div>
+      <!-- Second Card -->
+      <div class="col-md-6">
+        <div class="card card-custom">
+          <div 
+            class="card-image" 
+            style="background-image: url('https://i.pinimg.com/736x/5f/95/32/5f953204bb968359df4d7bad69326d7f.jpg');"></div>
+        </div>
+      </div>
+    </div>
+</div>
+
+<!-- Section show product-->
+<section class="pb-5 pt-3">
+    <div class="container px-4 mt-3">
+        <div class="row justify-content-start">
+            {% for product in products %}
+            {% if product.is_sale %}
+            <a href="{% url 'product' product.id %}" class="text-decoration-none link-card-product mb-5">
+                <div class="card-product">
+                    {% for sale in active_sale %}
+                    {% if sale.category == product.category %}
+                    <div class="sale">Giảm {{ sale.discount_percentage|floatformat:0|intcomma }}%</div>
+                    {% endif %}
+                    {% endfor %} 
+                    <div class="installment"><i class="bi bi-check2-all"></i></div>   
+                    <div class="img-card">
+                        <img class="card-img-top" src="{{ product.image.url }}" alt="{{ product.name }}" />
+                    </div>
+                    <div class="content">
+                        <div class="title-card">{{ product.name }}</div>
+                        <div class="price-card">
+                            {{ product.sale_price|floatformat:0|intcomma }}đ <del>{{ product.price|floatformat:0|intcomma }}đ</del>
+                        </div>
+                        <div class="ratings">
+                            <div class="stars">★★★★★</div>
+                            <button type="button" class="like" id="add-wishlist" value="{{ product.id }}">
+                                <i class="fa-regular fa-heart me-1"></i>Yêu thích
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <a href="{% url 'product' product.id %}" class="text-decoration-none link-card-product mb-5">
+                <div class="card-product">
+                    <div class="installment"><i class="bi bi-check2-all"></i></div> 
+                    <div class="img-card">
+                        <img class="card-img-top" src="{{ product.image.url }}" alt="{{ product.name }}" />
+                    </div>
+                    <div class="content">
+                        <div class="title-card">{{ product.name }}</div>
+                        <div class="price-card">
+                            {{ product.price|floatformat:0|intcomma }}đ
+                        </div>
+                        <div class="ratings">
+                            <div class="stars">★★★★★</div>
+                            <button type="button" class="like" id="add-wishlist" value="{{ product.id }}">
+                                <i class="fa-regular fa-heart me-1"></i>Yêu thích
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<script src="https://unpkg.com/scrollreveal"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+
+<script>
+    ScrollReveal().reveal('.banner-title', {
+        delay: 200,
+        distance: '50px',
+        origin: 'left',
+        duration: 1000,
+        reset: true, 
+    });
+
+    ScrollReveal().reveal('.banner-description', {
+        delay: 300,
+        distance: '50px',
+        origin: 'right',
+        duration: 1000,
+        reset: true,
+    });
+
+    ScrollReveal().reveal('.banner-content .btn', {
+        delay: 400,
+        distance: '50px',
+        origin: 'bottom',
+        duration: 1000,
+        reset: true,
+    });
+
+    ScrollReveal().reveal('.small-text', {
+        delay: 500,
+        distance: '20px',
+        origin: 'bottom',
+        duration: 800,
+        reset: true,
+    });
+
+    ScrollReveal().reveal('.image-container', {
+        delay: 600,
+        distance: '50px',
+        origin: 'right',
+        duration: 1200,
+        reset: true,
+    });
+</script>
+
+<script>
+    $(function () {
+        if ($('.owl-2').length > 0) {
+            $('.owl-2').owlCarousel({
+                center: false,
+                items: 1,
+                loop: true,
+                stagePadding: 0,
+                margin: 20,
+                smartSpeed: 500,
+                autoplay: true,
+                nav: true,
+                dots: true,
+                pauseOnHover: false,
+                responsive: {
+                    400: {
+                    margin: 20,
+                    nav: true,
+                    items: 2
+                    },
+                    1200: {
+                    margin: 20,
+                    stagePadding: 0,
+                    nav: true,
+                    items: 4
+                    }
+                }
+            });
+        }
+    })
+</script>
+{% endblock %}

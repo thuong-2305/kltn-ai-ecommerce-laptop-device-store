@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<!-- Header-->
+<header class="bg-dark py-5">
+    <div class="container px-4 px-lg-5 my-5">
+        <div class="text-center text-white">
+            <h1 class="display-4 fw-bolder">Thông tin hóa đơn</h1>
+            <p class="lead fw-normal text-white-50 mb-0">Xem thông tin hóa đơn của bạn...</p>
+        </div>
+    </div>
+</header>
+<br>
+<div class="container-fluid cart-container mb-5 mx-auto" style="width: 50%;">
+    <div class="card">
+        <div class="card-body">
+            <p class="fs-4 fw-bold mb-3">Chi tiết đơn đặt hàng</p>
+            <hr>
+            <div class="d-flex justify-content-between pb-2" style="font-size: 17px">
+                <p class="fw-semibold mb-0">SẢN PHẨM</p>
+                <p class="fw-semibold mb-0">TỔNG TIỀN</p>
+            </div>
+            <div style="height: 5px; width: 100%; background: #eee" class="mb-3"></div>
+            <div style="font-size: 15px">
+                {% for product in cart_products %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="left">
+                        <img src="{{ product.image.url }}" alt="" style="object-fit: cover; width:100px; height: 50px;">
+                        <span class="fw-semibold">
+                            {{ product.name }} <strong class="text-danger">
+                                <i class="bi bi-x"></i>
+                                {% for key, value in quantities.items %}
+                                {% if key == product.id|slugify %}
+                                {{ value }}
+                                {% endif %}
+                                {% endfor %}</strong></span>
+                    </div>
+                    <div class="right">
+                        {% if product.is_sale %}
+                        {{ product.sale_price|floatformat:0|intcomma }}đ
+                        {% else %}
+                        {{ product.price|floatformat:0|intcomma }}đ
+                        {% endif %}
+                    </div>
+                </div>
+                <hr>
+                {% endfor %}
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <strong>
+                    <p class="mb-0" style="font-size: 15px;">Tổng tiền hàng:</p>
+                </strong>
+                <p data-title="Total" class="order-total-content mb-0">
+                    <span class="woocommerce-Price-amount amount">
+                        <span class="currencySymbol"></span>{{ totals|floatformat:0|intcomma }}đ
+                    </span>
+                </p>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between">
+                <span style="font-size: 15px;">
+                    <strong>Phí vận chuyển: </strong>
+                    <small>&#40; giao hàng {% if shipping_method == "normal" %}
+                        tiết kiệm
+                        {% elif shipping_method == "express" %}
+                        nhanh
+                        {% endif %}&#41;
+                    </small>
+                </span>
+                <span class="woocommerce-Price-amount amount"><bdi>{{ price_ship|intcomma}}đ</bdi></span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between">
+                <strong>
+                    <p class="mb-0">Tổng thanh toán:</p>
+                </strong>
+                <p data-title="Total" class="order-total-content mb-0">
+                    <span class="woocommerce-Price-amount amount text-danger fw-semibold">
+                        <span class="currencySymbol"></span>{{ total_final|floatformat:0|intcomma }}đ
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-5 mx-auto" style="width: 48%;">
+    <div class="card-body">
+        <p class="fs-4 fw-bold mb-3">Thông tin giao hàng</p>
+        <hr>
+        <span class="mb-2 fw-semibold">Họ tên: </span>
+        {{ shipping_info.shipping_full_name }}
+        <br>
+        <span class="mb-2 fw-semibold">Số điện thoại: </span>
+        {{ shipping_info.shipping_phone }}
+        <br>
+        <span class="mb-2 fw-semibold">Địa chỉ: </span>
+        {{ shipping_info.shipping_address }}
+        <br>
+    </div>
+</div>
+
+<div class="d-md-flex align-items-center mx-auto mb-3" style="width: 48%; background-color: #fff;">
+    <div class="card-body box2 shadow-sm mx-auto">
+        <p class="fs-4 fw-bold mb-3 ps-2">Phương thức thanh toán</p>
+        <ul class="nav nav-tabs mb-3 px-md-4 px-2" id="paymentTabs">
+            <li class="nav-item" onclick="selectPaymentMethod('credit')">
+                <label class="form-check-label" for="credit">
+                    <a class="nav-link" id="creditCardTab" data-bs-toggle="tab" href="#creditCard">
+                        <input class="form-check-input" type="radio" name="payment_method" id="credit" value="creditCard">
+                        <i class="fa fa-credit-card me-2"></i> Thẻ tín dụng
+                    </a>
+                </label>
+            </li>
+            <li class="nav-item" onclick="selectPaymentMethod('paypalMethod')">
+                <label class="form-check-label" for="paypalMethod">
+                    <a class="nav-link" id="paypalTab" data-bs-toggle="tab" href="#paypal">
+                        <input class="form-check-input" type="radio" name="payment_method" id="paypalMethod" value="paypal">
+                        <i class="fab fa-paypal me-2"></i> Paypal
+                    </a>
+                </label>
+            </li>
+            <li class="nav-item" onclick="selectPaymentMethod('upon')">
+                <label class="form-check-label" for="upon">
+                    <a class="nav-link active" id="uponReceiptTab" data-bs-toggle="tab" href="#uponReceipt">
+                        <input class="form-check-input" type="radio" name="payment_method" id="upon" value="uponReceipt" checked>
+                        <i class="fa fa-truck me-2"></i> Khi nhận hàng
+                    </a>
+                </label>
+            </li>
+        </ul>
+        
+        <div style="width: 95%" class="mx-auto">
+            <div class="tab-content">
+                <!-- Credit Card Form -->
+                <div class="tab-pane fade" id="creditCard">
+                    <!--<form action="{% url 'process_order' %}" method="post">
+                        {% csrf_token %}
+                        <div class="card mb-3 mx-auto border-0">
+                            <div class="card-body">
+                                <p class="fs-4 fw-bold mb-3">Thông tin thẻ tín dụng</p> -->
+                                <!-- Cardholder's Name 
+                                <div class="mb-3">
+                                    {{ billing_form.card_name }}
+                                </div>-->
+
+                                <!-- Card Number 
+                                <div class="mb-3">
+                                    {{ billing_form.card_number }}
+                                </div>-->
+
+                                <!-- Expiration Date and CVV (on the same row) 
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <div class="input-group">
+                                            {{ billing_form.card_exp_date }}
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="input-group">
+                                            {{ billing_form.card_cvv_number }}
+                                        </div>
+                                    </div>
+                                </div>-->
+
+                                <!-- Billing Address 
+                                <div class="mb-3">
+                                    {{ billing_form.card_address }}
+                                </div>-->
+
+                                <!-- ZIP Code 
+                                <div class="mb-3">
+                                    {{ billing_form.card_zipcode }}
+                                </div>
+                            </div>
+                        </div>
+
+                        {#Shipping infor#}
+                        <input type="hidden" name="shipping_full_name" id="shipping_full_name" value="{{ full_name }}">
+                        <input type="hidden" name="shipping_phone" id="shipping_phone" value="{{ phone }}">
+                        <input type="hidden" name="shipping_full_address" id="shipping_full_address" value="{{ full_address }}"> 
+                        <div class="card mb-5 mx-auto" style="border: none">
+                            <button type="submit" class="btn btn-outline-primary mx-auto rounded-pill" style="width: 48%">Thanh toán ngay</button>
+                        </div>
+                        
+                    </form> -->
+                    <form action="{% url 'vnpay_checkout' %}" method="post">
+                        {% csrf_token %}
+                        <div class="card mb-3 mx-auto">
+                            <div class="card-body">
+                                <p class="fs-4 fw-bold mb-3">Thông tin thẻ tín dụng</p>
+                                <!-- Thêm thông tin thanh toán PayPal ở đây -->
+                                <p>Thanh toán nhanh chóng thông qua VNpay.</p>
+                            </div>
+                        </div>
+
+                        {#Shipping infor#}
+                        <input type="hidden" name="shipping_full_name" id="shipping_full_name" value="{{ full_name }}">
+                        <input type="hidden" name="shipping_phone" id="shipping_phone" value="{{ phone }}">
+                        <input type="hidden" name="shipping_full_address" id="shipping_full_address" value="{{ full_address }}">
+                        
+                        <input type="hidden" name="description" value="Thanh toán đơn hàng VNPay">
+                        
+                        <div class="card mb-5 mx-auto" style="border: none">
+                            <button type="submit" class="btn btn-outline-primary mx-auto rounded-pill" style="width: 48%">Thanh toán ngay</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Paypal Form -->
+                <div class="tab-pane fade" id="paypal">
+                    <form action="{% url 'process_order_paypal' %}" method="post">
+                        {% csrf_token %}
+                        <div class="card mb-3 mx-auto">
+                            <div class="card-body">
+                                <p class="fs-4 fw-bold mb-3">Thanh toán thông qua paypal</p>
+                                <!-- Thêm thông tin thanh toán PayPal ở đây -->
+                                <p>Bạn đã chọn thanh toán thông qua tài khoản paypal.</p>
+                            </div>
+                        </div>
+
+                        {#Shipping infor#}
+                        <input type="hidden" name="shipping_full_name" id="shipping_full_name" value="{{ full_name }}">
+                        <input type="hidden" name="shipping_phone" id="shipping_phone" value="{{ phone }}">
+                        <input type="hidden" name="shipping_full_address" id="shipping_full_address" value="{{ full_address }}">
+
+                        <div class="card mb-5 mx-auto" style="border: none">
+                            <button type="submit" class="btn btn-outline-primary mx-auto rounded-pill" style="width: 48%">Thanh toán ngay</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Upon Receipt Form -->
+                <div class="tab-pane fade  show active" id="uponReceipt">
+                    <form action="{% url 'process_order_upon' %}" method="post">
+                        {% csrf_token %}
+                        <div class="card mb-3 mx-auto">
+                            <div class="card-body">
+                                <p class="fs-4 fw-bold mb-3">Thanh toán khi nhận hàng</p>
+                                <!-- Thêm thông tin thanh toán khi nhận hàng ở đây -->
+                                <p>Bạn đã chọn thanh toán khi nhận hàng.</p>
+                            </div>
+                        </div>
+
+                        {#Shipping infor#}
+                        <input type="hidden" name="shipping_full_name" id="shipping_full_name" value="{{ full_name }}">
+                        <input type="hidden" name="shipping_phone" id="shipping_phone" value="{{ phone }}">
+                        <input type="hidden" name="shipping_full_address" id="shipping_full_address" value="{{ full_address }}">
+
+                        <div class="card mb-5 mx-auto" style="border: none">
+                            <button type="submit" id="payNowButton" class="btn btn-outline-primary mx-auto rounded-pill" style="width: 48%" >Thanh toán ngay</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectPaymentMethod(id) {
+        // Chọn radio button dựa vào ID được truyền vào
+        const radio = document.getElementById(id);
+        if (radio) {
+            radio.checked = true; // Đánh dấu radio được chọn
+        }
+
+        // Đồng thời kích hoạt tab tương ứng nếu cần
+        const targetTab = document.querySelector(`a[href="#${radio.value}"]`);
+        if (targetTab) {
+            const bootstrapTab = new bootstrap.Tab(targetTab);
+            bootstrapTab.show();
+        }
+    }
+</script>
+
+{% endblock %}
