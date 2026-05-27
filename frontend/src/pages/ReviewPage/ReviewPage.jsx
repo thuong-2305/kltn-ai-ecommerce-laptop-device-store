@@ -1,10 +1,10 @@
 import { useParams, Link, useLocation } from 'react-router-dom'
 import { ChevronRight, CheckCircle2, Star } from 'lucide-react'
-import { useReview } from './hooks/useReview'
+import { useReview } from '../../features/review/hooks/useReview'
 import {
   PurchasedProduct, ReviewForm, ReviewSidebar,
   RatingOverview, ReviewCard, StarDisplay
-} from './components/ReviewComponents'
+} from '../../features/review/components/ReviewComponents'
 
 function Skeleton({ cls }) { return <div className={`animate-pulse bg-slate-200 rounded-xl ${cls}`} /> }
 

@@ -6,12 +6,12 @@ import {
   Heart, MapPin, Bell, Gift, Star, Settings
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useProfile } from './hooks/useProfile'
-import { PersonalInfoTab } from './components/tabs/PersonalInfoTab'
-import { SecurityTab } from './components/tabs/SecurityTab'
-import { OrdersTab } from './components/tabs/OrdersTab'
-import { WishlistTab } from './components/tabs/WishlistTab'
-import { AddressTab } from './components/tabs/AddressTab'
+import { useProfile } from '../../features/profile/hooks/useProfile'
+import { PersonalInfoTab } from '../../features/profile/components/tabs/PersonalInfoTab'
+import { SecurityTab } from '../../features/profile/components/tabs/SecurityTab'
+import { OrdersTab } from '../../features/profile/components/tabs/OrdersTab'
+import { WishlistTab } from '../../features/profile/components/tabs/WishlistTab'
+import { AddressTab } from '../../features/profile/components/tabs/AddressTab'
 
 /* ─── Nav config ──────────────────────────────────────────────── */
 const NAV_GROUPS = [

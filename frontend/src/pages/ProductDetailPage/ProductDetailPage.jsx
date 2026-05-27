@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
-import { useProductDetail } from './hooks/useProductDetail'
+import { useProductDetail } from '../../features/product/hooks/useProductDetail'
 import { addToCart } from '../../services/cartApi'
 import { useWishlistStore } from '../../hooks/useWishlistStore'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
@@ -12,8 +12,8 @@ import {
   ProductReviews,
   ProductDetailSkeleton,
   ProductDetailError,
-} from './components/ProductDetailComponents'
-import ProductCard from '../ProductListPage/components/ProductCard'
+} from '../../features/product/components/ProductDetailComponents'
+import ProductCard from '../../features/product/components/ProductCard'
 
 const TABS = [
   { id: 'specs', label: 'Thông số kỹ thuật' },

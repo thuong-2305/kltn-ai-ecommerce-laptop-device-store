@@ -11,7 +11,7 @@ function StripIcon({ icon: Icon }) {
 
 function TopStrip() {
   return (
-    <div className={`px-5 pb-2 pt-3 ${SEMANTIC_CLASSES.TEXT.SECONDARY} text-caption-lg`}>
+    <div className={`px-5 pb-2 pt-3 ${SEMANTIC_CLASSES.TEXT.SECONDARY} text-sm`}>
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 tracking-[0.01em]">
         <span className="inline-flex items-center gap-1.5">
           <StripIcon icon={FiTruck} />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AlertCircle, ChevronRight, ChevronLeft, Check, Truck, CreditCard, MapPin, User, Phone, Mail, Tag, Shield, Package, RefreshCw, Headphones } from 'lucide-react'
-import { useCart } from '../CartPage/hooks/useCart'
+import { useCart } from '../../features/cart/hooks/useCart'
 import axios from 'axios'
 
 /* ─── Helpers ─────────────────────────────────────────────────── */

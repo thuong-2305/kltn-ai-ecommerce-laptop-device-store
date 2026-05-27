@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { ChevronRight, SearchX } from 'lucide-react'
-import { useProductFilters } from '../ProductListPage/hooks/useProductFilters'
-import ProductGrid from '../ProductListPage/components/ProductGrid'
-import Pagination from '../ProductListPage/components/Pagination'
-import ProductListLoadingState from '../ProductListPage/components/ProductListLoadingState'
-import ProductListErrorState from '../ProductListPage/components/ProductListErrorState'
+import { useProductFilters } from '../../features/product/hooks/useProductFilters'
+import ProductGrid from '../../features/product/components/ProductGrid'
+import Pagination from '../../features/product/components/Pagination'
+import ProductListLoadingState from '../../features/product/components/ProductListLoadingState'
+import ProductListErrorState from '../../features/product/components/ProductListErrorState'
 
 function SearchPage() {
   const [searchParams] = useSearchParams()

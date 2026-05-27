@@ -23,7 +23,7 @@ function HomeHeroSection({
   const heroArticleClass = `relative grid min-h-117 grid-cols-1 items-center gap-4 overflow-hidden rounded-3xl px-8 py-8 text-white shadow-[0_18px_44px_rgba(15,23,42,0.18)] lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:gap-4.5 lg:px-8.5 lg:py-8.5 ${heroBackgroundClass} bg-slate-900 bg-cover bg-center bg-no-repeat`
 
   return (
-    <section className={`mx-4.5 mt-6 mb-8 grid gap-0 overflow-hidden rounded-none border ${SEMANTIC_CLASSES.BORDER.DEFAULT} bg-white/90 lg:grid-cols-[240px_minmax(0,1fr)]`} id="hero">
+    <section className={`mx-4.5 mb-8 grid gap-0 overflow-hidden rounded-none border ${SEMANTIC_CLASSES.BORDER.DEFAULT} bg-white/90 lg:grid-cols-[240px_minmax(0,1fr)]`} id="hero">
       <aside className={`border-md ${SEMANTIC_CLASSES.BORDER.DEFAULT} bg-linear-to-b from-white/60 to-slate-50/80 px-4.5 py-5.5 lg:border-b-0 lg:border-r`}>
         <div className="flex flex-col gap-2">
           {categories.slice(0, 8).map((category) => (
@@ -50,7 +50,7 @@ function HomeHeroSection({
           onClick={onPrev}
           aria-label="Slide trước"
         >
-          <FiChevronLeft size={22} aria-hidden="true" className='text-white'/>
+          <FiChevronLeft size={22} aria-hidden="true" className='text-white' />
         </button>
 
         <article className={heroArticleClass}>
@@ -73,7 +73,7 @@ function HomeHeroSection({
           onClick={onNext}
           aria-label="Slide tiếp theo"
         >
-          <FiChevronRight size={22} aria-hidden="true" className='text-white'/>
+          <FiChevronRight size={22} aria-hidden="true" className='text-white' />
         </button>
 
         <div className="flex justify-center gap-2 mt-4" aria-label="Điều hướng slide">

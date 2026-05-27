@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, Zap, Clock, Flame } from 'lucide-react'
-import { useProductFilters } from '../ProductListPage/hooks/useProductFilters'
-import ProductGrid from '../ProductListPage/components/ProductGrid'
-import ProductListLoadingState from '../ProductListPage/components/ProductListLoadingState'
+import { useProductFilters } from '../../features/product/hooks/useProductFilters'
+import ProductGrid from '../../features/product/components/ProductGrid'
+import ProductListLoadingState from '../../features/product/components/ProductListLoadingState'
 
 // Hook đếm ngược thời gian giả lập (đến cuối ngày hôm nay)
 function useCountdown() {

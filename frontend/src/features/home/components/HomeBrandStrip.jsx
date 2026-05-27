@@ -16,14 +16,14 @@ function HomeBrandStrip() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 brand-grid sm:grid-cols-4 sm:gap-4 lg:grid-cols-8">
+      <div className="mt-6 grid grid-cols-2 gap-3 brand-grid sm:grid-cols-4 sm:gap-4 lg:grid-cols-8">
         {brands.map((brand) => (
           <div
             key={brand.name}
             className="brand-chip cursor-pointer transition-all duration-standard hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-standard hover:ring-1 hover:ring-brand-primary/15"
           >
-            <img 
-              src={brand.logo} 
+            <img
+              src={brand.logo}
               alt={`${brand.name} logo`}
               className="object-contain w-full h-16"
             />

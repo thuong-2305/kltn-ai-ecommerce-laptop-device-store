@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ShoppingCart, ChevronRight } from 'lucide-react'
-import { useCart } from './hooks/useCart'
+import { useCart } from '../../features/cart/hooks/useCart'
 import {
   CartItemRow,
   ShippingSelector,
@@ -8,7 +8,7 @@ import {
   EmptyCart,
   CartSkeleton,
   CartError,
-} from './components/CartComponents'
+} from '../../features/cart/components/CartComponents'
 
 /**
  * CartPage — Full shopping cart with item management, shipping selector, and order summary

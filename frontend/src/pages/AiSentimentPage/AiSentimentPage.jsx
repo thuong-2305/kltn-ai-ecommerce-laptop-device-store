@@ -10,7 +10,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts'
-import { StarDisplay } from '../ReviewPage/components/ReviewComponents'
+import { StarDisplay } from '../../features/review/components/ReviewComponents'
 
 // Mock Data
 const dataPie = [
