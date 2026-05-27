@@ -1,31 +1,13 @@
-import os
-import tempfile
-from PIL import Image
 from django.http import JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from django.contrib.auth.models import User
-from django.db.models import Avg, Q, Sum, Case, When, F, Value, Count
+from django.db.models import Avg, Q, Sum, Case, When, F, Count
 from django.db.utils import ProgrammingError
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
+from django.views.decorators.http import require_GET
+from django.core.paginator import Paginator
 
-# from analysis.spam_detective import isSpam  # Temporarily disabled - requires analysis app
-from cart.cart import Cart
-
-from payment.forms import ShippingForm
-from payment.models import Order, OrderItem, ShippingAddress
-
-# from analysis.system import getReviewEmotion  # Temporarily disabled - requires analysis app
-# from recommend import recommend_system  # Temporarily disabled - requires pandas, sklearn
-
-# from .utils import find_similar_products  # Temporarily disabled - requires torch, clip, faiss
 from .models import Product, Category, ProductThumbnail, Profile, Review, SaleEvent
-# from .forms import ImageUploadForm, ReviewForm, SignUpForm, UpdateUserForm, ChangePasswordForm, UserInfoForm
-from datetime import datetime, timedelta
+
 import json
 
 
@@ -128,6 +110,220 @@ def _serialize_product(request, product, sale=None):
     }
 
 
+@require_GET
+def products_api(request):
+    """
+    REST API endpoint: GET /api/store/products/
+    Query params:
+      - category (int): filter by category id
+      - search (str): search by product name
+      - min_price (int): minimum price filter
+      - max_price (int): maximum price filter
+      - sort (str): newest | price-asc | price-desc | rating | popular
+      - page (int): page number (default 1)
+      - limit (int): items per page (default 20, max 100)
+    """
+    try:
+        _, active_sales_by_category = _get_active_sales()
+
+        qs = (
+            Product.objects
+            .select_related('category')
+            .prefetch_related('thumbnails')
+            .annotate(
+                average_rating=Avg('review__rating', filter=Q(review__is_spam=False)),
+                review_count=Count('review', filter=Q(review__is_spam=False), distinct=True),
+                total_sold=Sum('orderitem__quantity'),
+            )
+        )
+
+        # --- Filter: category ---
+        category_id = request.GET.get('category')
+        if category_id:
+            try:
+                qs = qs.filter(category_id=int(category_id))
+            except (ValueError, TypeError):
+                pass
+
+        # --- Filter: search ---
+        search = request.GET.get('search', '').strip()
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        # --- Filter: price range ---
+        # Use effective price (sale_price if on sale, else price)
+        qs = qs.annotate(
+            effective_price=Case(
+                When(is_sale=True, sale_price__isnull=False, then=F('sale_price')),
+                default=F('price'),
+            )
+        )
+
+        try:
+            min_price = int(request.GET.get('min_price', 0))
+            max_price = int(request.GET.get('max_price', 999_999_999))
+            qs = qs.filter(effective_price__gte=min_price, effective_price__lte=max_price)
+        except (ValueError, TypeError):
+            pass
+
+        # --- Sorting ---
+        sort = request.GET.get('sort', 'newest')
+        sort_map = {
+            'newest': '-id',
+            'price-asc': 'effective_price',
+            'price-desc': '-effective_price',
+            'rating': '-average_rating',
+            'popular': '-total_sold',
+        }
+        qs = qs.order_by(sort_map.get(sort, '-id'))
+
+        # --- Pagination ---
+        try:
+            limit = min(int(request.GET.get('limit', 20)), 100)
+            page_num = int(request.GET.get('page', 1))
+        except (ValueError, TypeError):
+            limit, page_num = 20, 1
+
+        paginator = Paginator(qs, limit)
+        page_obj = paginator.get_page(page_num)
+
+        results = [
+            _serialize_product(request, product, active_sales_by_category.get(product.category_id))
+            for product in page_obj.object_list
+        ]
+
+        return JsonResponse({
+            'count': paginator.count,
+            'total_pages': paginator.num_pages,
+            'page': page_obj.number,
+            'limit': limit,
+            'results': results,
+        }, json_dumps_params={'ensure_ascii': False})
+
+    except Exception as exc:
+        return JsonResponse({'error': str(exc), 'results': []}, status=500)
+
+
+@require_GET
+def categories_api(request):
+    """REST API endpoint: GET /api/store/categories/"""
+    try:
+        categories = Category.objects.annotate(product_count=Count('product')).order_by('id')
+        _, active_sales_by_category = _get_active_sales()
+
+        data = [
+            _serialize_category(request, cat, active_sales_by_category.get(cat.id))
+            for cat in categories
+        ]
+        return JsonResponse({'results': data}, json_dumps_params={'ensure_ascii': False})
+    except Exception as exc:
+        return JsonResponse({'error': str(exc), 'results': []}, status=500)
+
+
+@require_GET
+def product_detail_api(request, pk):
+    """
+    REST API endpoint: GET /api/store/products/<pk>/
+    Returns full product detail: info, specs, reviews, related products.
+    """
+    try:
+        product = (
+            Product.objects
+            .select_related('category')
+            .prefetch_related('thumbnails')
+            .annotate(
+                average_rating=Avg('review__rating', filter=Q(review__is_spam=False)),
+                review_count=Count('review', filter=Q(review__is_spam=False), distinct=True),
+                total_sold=Sum('orderitem__quantity'),
+            )
+            .get(pk=pk)
+        )
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Product not found'}, status=404)
+
+    _, active_sales_by_category = _get_active_sales()
+    sale = active_sales_by_category.get(product.category_id)
+
+    # Serialize base product data
+    data = _serialize_product(request, product, sale)
+
+    # Add full description
+    data['description'] = product.description or ''
+
+    # Parse config into structured list: "- CPU + Intel Core i7: 1235U + ..." → [{CPU: [{Intel Core i7: 1235U}]}, ...]
+    raw_config = product.config or ''
+    config_items = []
+    for segment in raw_config.split('- '):
+        segment = segment.strip()
+        if not segment:
+            continue
+        parts = [p.strip() for p in segment.split(' + ')]
+        if len(parts) >= 2:
+            label = parts[0]
+            specs = []
+            for kv in parts[1:]:
+                if ': ' in kv:
+                    k, v = kv.split(': ', 1)
+                    specs.append({'key': k.strip(), 'value': v.strip()})
+                else:
+                    specs.append({'key': kv, 'value': ''})
+            config_items.append({'label': label, 'specs': specs})
+    data['config'] = config_items
+
+    # Reviews (non-spam, recent first, limit 10)
+    review_qs = (
+        Review.objects
+        .filter(product=product, is_spam=False)
+        .select_related('user')
+        .order_by('-review_date')[:20]
+    )
+    data['reviews'] = [
+        {
+            'id': r.id,
+            'user': r.user.get_full_name() or r.user.username,
+            'rating': r.rating,
+            'comment': r.comment or '',
+            'sentiment': r.sentiment,
+            'review_date': r.review_date.isoformat(),
+        }
+        for r in review_qs
+    ]
+
+    # Rating distribution
+    from django.db.models import IntegerField
+    dist_qs = (
+        Review.objects
+        .filter(product=product, is_spam=False)
+        .values('rating')
+        .annotate(count=Count('id'))
+    )
+    rating_dist = {i: 0 for i in range(1, 6)}
+    for row in dist_qs:
+        rating_dist[row['rating']] = row['count']
+    data['rating_distribution'] = rating_dist
+
+    # Related products (same category, exclude self, limit 8)
+    related_qs = (
+        Product.objects
+        .select_related('category')
+        .prefetch_related('thumbnails')
+        .annotate(
+            average_rating=Avg('review__rating', filter=Q(review__is_spam=False)),
+            review_count=Count('review', filter=Q(review__is_spam=False), distinct=True),
+            total_sold=Sum('orderitem__quantity'),
+        )
+        .filter(category=product.category)
+        .exclude(pk=pk)
+        .order_by('-id')[:8]
+    )
+    data['related_products'] = [
+        _serialize_product(request, p, active_sales_by_category.get(p.category_id))
+        for p in related_qs
+    ]
+
+    return JsonResponse(data, json_dumps_params={'ensure_ascii': False})
+
+
 @cache_page(60 * 5)
 def home_api(request):
     """Return home page data for the frontend app."""
@@ -180,172 +376,8 @@ def home_api(request):
 
     return JsonResponse(payload, json_dumps_params={'ensure_ascii': False})
 
-def product(request, pk):
-    """Display a single product"""
-    product = Product.objects.get(id=pk)
-    thumbnails = product.thumbnails.all()
-
-    price = f"{product.price:,}"
-    sale_price = f"{product.sale_price:,}"
-    description = product.description.split("- ") if product.description else []  
-
-    if product.config:  
-        config = product.config.split("- ")
-    else:
-        config = [] 
-
-    processed_config =[
-        {parts[0]: [{kv.split(": ")[0]: kv.split(": ")[1]} for kv in parts[1:] if ": " in kv]}
-        for con in config if con
-        for parts in [con.split(" + ")]]
-    
-    if request.user.is_authenticated:
-        current_user = User.objects.get(id=request.user.id)
-        reviews = Review.objects.filter(Q(product=product) & (Q(is_spam=False) | Q(user=current_user))).order_by('-review_date', 'id')
-    else:
-        reviews = Review.objects.filter(Q(product=product) & (Q(is_spam=False))).order_by('-review_date', 'id')
-
-    average_rating = Review.objects.filter(product=product).aggregate(Avg('rating'))['rating__avg']
-    if average_rating is None:
-        average_rating = 0  
-
-    # top_recommend_product = 5
-    # product_recommend = recommend_system.get_products_similar(pk, top_recommend_product)
-
-    return render(request, 'product.html', 
-        {'product':product, 
-         'description':description, 
-         'price':price, 
-         'sale_price':sale_price,
-         'config':processed_config,
-         'reviews' : reviews,
-         'average_rating': average_rating,
-         # 'product_recommend': product_recommend,
-         'thumbnails': thumbnails,
-        }
-    )
 
 def home(request):
-    """Display home page with products and sales"""
-    products = Product.objects.all()
+    """Legacy root URL — redirect to home_api for backward compatibility."""
+    return home_api(request)
 
-    # Lấy các sự kiện giảm giá còn hiệu lực
-    active_sales = SaleEvent.objects.filter(
-        start_date__lte=datetime.now(),
-        end_date__gte=datetime.now()
-    )
-    # Lấy danh sách các category được giảm giá
-    discounted_categories = [sale.category for sale in active_sales]
-
-    # Lấy top sản phẩm bán chạy nhất
-    top_products = (Product.objects.annotate(total_sold=Sum('orderitem__quantity'))
-        .filter(total_sold__gt=0)  
-        .order_by('-total_sold')[:10]
-    )
-
-    context = {
-        'products':products,
-        'discounted_categories': discounted_categories,
-        'active_sale': active_sales,
-        'top_products': top_products
-    }
-
-    return render(request, 'home.html', context)
-
-def category_summary(request):
-    """Display all categories and products with filtering options"""
-    categories = Category.objects.all()
-    products = Product.objects.all()
-
-    # Xử lý bộ lọc giá
-    price_min = request.GET.get('price_min')
-    price_max = request.GET.get('price_max')
-
-    # Gộp giá sale và giá thường thành một trường chung
-    products = products.annotate(
-        effective_price=Case(
-            When(is_sale=True, then=F('sale_price')),
-            default=F('price')
-        )
-    )
-
-    if price_min and price_max:
-        products = products.filter(
-            effective_price__gte=price_min,
-            effective_price__lte=price_max
-        )
-
-    order_by = request.GET.get('order_by')
-    if order_by == 'popular':
-        products = products.annotate(total_sold=Sum('orderitem__quantity')).filter(total_sold__gt=0).order_by('-total_sold')
-    elif order_by == 'promotion':
-        products = products.filter(is_sale=True).order_by('-sale_price')
-    elif order_by == 'price-asc':
-        products = products.order_by('effective_price')
-    elif order_by == 'price-desc':
-        products = products.order_by('-effective_price')
-
-    return render(request, 'category_summary.html', {'categories':categories, 'products':products})
-
-def category(request, foo):
-    """Display products by category"""
-    # Lấy các sự kiện giảm giá còn hiệu lực
-    active_sales = SaleEvent.objects.filter(
-        start_date__lte=datetime.now(),
-        end_date__gte=datetime.now()
-    )
-    try:
-        category = Category.objects.get(name=foo)
-        products = Product.objects.filter(category=category)
-        return render(request, 'category.html', {'products':products, 'category':category, 'active_sale': active_sales})
-    except:
-        messages.success("That category doesn't exist...")
-        return redirect('home')
-
-def about(request):
-    """Display about page"""
-    return render(request, 'about.html', {})
-
-def login_user(request):
-    """Handle user login"""
-    if request.user.is_authenticated:
-        return redirect('home')
-    
-    if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        error = ''
-        if user is not None:
-            login(request, user)
-
-            current_user = Profile.objects.get(user__id=request.user.id)
-
-            save_cart = current_user.old_cart
-            if save_cart:
-                converted_cart = json.loads(save_cart)
-                cart = Cart(request)
-                for key, value in converted_cart.items():
-                    cart.db_add(product=key, quantity=value)
-
-            messages.success(request, ('You have successfully logged in.'))
-            return redirect('home')
-        else:
-            error = 'Invalid username or password.'
-            return render(request, 'login.html', {'error':error})
-    else:
-        return render(request, 'login.html', {})
-
-def logout_user(request):
-    """Handle user logout"""
-    logout(request)
-    messages.success(request, ('You have successfully logged out!'))
-    return redirect('home')
-
-def register_user(request):
-    """Handle user registration"""
-    if request.user.is_authenticated:
-        return redirect('home')
-    
-    messages.error(request, "Registration form not available yet.")
-    return redirect('home')

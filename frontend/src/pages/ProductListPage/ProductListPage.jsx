@@ -8,6 +8,9 @@ import Pagination from './components/Pagination'
 import ProductListLoadingState from './components/ProductListLoadingState'
 import ProductListErrorState from './components/ProductListErrorState'
 import { Filter } from 'lucide-react'
+import { addToCart } from '../../services/cartApi'
+import { useWishlistStore } from '../../hooks/useWishlistStore'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 
 /**
  * ProductListPage - Modern product listing page
@@ -32,6 +35,7 @@ function ProductListPage() {
 
   // Mobile filter sidebar state
   const [filterSidebarOpen, setFilterSidebarOpen] = useState(false)
+  const toggleWishlist = useWishlistStore(state => state.toggleWishlist)
 
   // Mock categories
   const [categories, setCategories] = useState([
@@ -42,20 +46,32 @@ function ProductListPage() {
     { id: 5, name: 'Laptop 2-in-1' },
   ])
 
+  const activeCategoryName = filters.category 
+    ? categories.find(c => String(c.id) === String(filters.category))?.name || 'Sản phẩm'
+    : 'Tất cả sản phẩm'
+
+  useDocumentTitle(
+    activeCategoryName,
+    `Khám phá danh sách ${activeCategoryName} chất lượng cao, cấu hình mạnh mẽ, chính hãng, giá cạnh tranh nhất thị trường tại LAPTOP DEVICE STORE.`
+  )
+
   // Sync URL params with filters
   useEffect(() => {
     const search = searchParams.get('q')
     const category = searchParams.get('category')
+    const minPrice = searchParams.get('min_price')
+    const maxPrice = searchParams.get('max_price')
     const sort = searchParams.get('sort')
 
-    if (search || category || sort) {
-      updateFilters({
-        search: search || '',
-        category: category ? parseInt(category) : null,
-        sortBy: sort || 'newest',
-      })
-    }
-  }, [searchParams, updateFilters])
+    const newFilters = {}
+    if (search !== null) newFilters.search = search
+    if (category !== null) newFilters.category = category
+    if (minPrice !== null) newFilters.minPrice = minPrice
+    if (maxPrice !== null) newFilters.maxPrice = maxPrice
+    if (sort !== null) newFilters.sort = sort
+
+    updateFilters(newFilters)
+  }, [searchParams])
 
   // Update URL params when filters change
   const handleFilterChange = (filterKey, value) => {
@@ -83,129 +99,113 @@ function ProductListPage() {
     setSearchParams({})
   }
 
-  const handleAddToCart = (product) => {
-    console.log('Added to cart:', product)
-    alert(`Đã thêm "${product.name}" vào giỏ hàng`)
+  const handleAddToCart = async (product) => {
+    try {
+      await addToCart(product.id, 1)
+      alert(`Đã thêm "${product.name}" vào giỏ hàng!`)
+    } catch {
+      alert('Không thể thêm sản phẩm vào giỏ hàng.')
+    }
   }
 
-  const handleAddToWishlist = (product) => {
-    console.log('Added to wishlist:', product)
-    alert(`Đã thêm "${product.name}" vào danh sách yêu thích`)
+  const handleAddToWishlist = async (product) => {
+    try {
+      const res = await toggleWishlist(product)
+      alert(res.message)
+    } catch {
+      alert('Thao tác danh sách yêu thích thất bại.')
+    }
   }
 
   const handleQuickView = (product) => {
-    console.log('Quick view:', product)
     // TODO: Implement quick view modal
   }
 
   const handleCompare = (product) => {
-    console.log('Compare:', product)
     // TODO: Implement compare functionality
   }
 
   return (
-    <div className="w-full bg-slate-50 min-h-screen">
-      {/* Page Container */}
-      <div className="mx-auto max-w-7xl px-4 md:px-6 lg:px-8 py-8 md:py-12">
-        {/* Breadcrumb Navigation */}
-        <nav className="mb-8 flex items-center gap-2 text-sm">
-          <a href="/" className="text-slate-600 hover:text-blue-600 transition-colors font-medium">
-            Trang chủ
-          </a>
-          <span className="text-slate-300">/</span>
-          <a href="#" className="text-slate-600 hover:text-blue-600 transition-colors font-medium">
-            Sản phẩm
-          </a>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-900 font-semibold">Laptop</span>
-        </nav>
+    <div className="mx-4.5 py-6 pb-16">
+      {/* Breadcrumb */}
+      <nav className="mb-5 flex items-center gap-2 text-sm">
+        <a href="/" className="text-slate-500 hover:text-blue-600 transition-colors font-medium">Trang chủ</a>
+        <span className="text-slate-300">/</span>
+        <a href="#" className="text-slate-500 hover:text-blue-600 transition-colors font-medium">Sản phẩm</a>
+        <span className="text-slate-300">/</span>
+        <span className="text-slate-900 font-semibold">{filters.category ? categories.find(c => c.id === filters.category)?.name || 'Danh mục' : 'Tất cả'}</span>
+      </nav>
 
-        {/* Page Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-2">
-              Laptop
-            </h1>
-            <p className="text-slate-600 text-base">
-              Hiển thị {products.length} / {pagination.total} sản phẩm
-            </p>
-          </div>
-
-          {/* Mobile Filter Toggle Button */}
-          <button
-            onClick={() => setFilterSidebarOpen(true)}
-            className="md:hidden inline-flex items-center gap-2 px-4 h-11 rounded-lg bg-blue-600 text-white font-semibold text-sm transition-all hover:bg-blue-700 active:scale-95"
-          >
-            <Filter size={18} />
-            Bộ lọc
-          </button>
+      {/* Page Header */}
+      <div className="mb-5 flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-slate-200/80 pb-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 uppercase tracking-tight">
+            {filters.category ? categories.find(c => c.id === filters.category)?.name || 'Sản phẩm' : 'Tất cả sản phẩm'}
+          </h1>
+          <p className="text-slate-500 text-sm">
+            Hiển thị {!loading ? `${products.length} trong ${pagination.total}` : '...'} kết quả
+          </p>
         </div>
 
-        {/* Main Content - Grid Layout */}
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-[280px_1fr]">
-          {/* Sidebar - Desktop Only */}
-          <div className="hidden md:block">
-            <div className="sticky top-20">
-              <FilterSidebar
-                categories={categories}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                onReset={handleReset}
-              />
-            </div>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="space-y-6">
-            {/* Toolbar - Sort & View Options */}
-            <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-lg border border-slate-200">
-              <div className="text-sm text-slate-600 font-medium hidden sm:block">
-                {!loading && products.length > 0
-                  ? `Hiển thị ${products.length} sản phẩm`
-                  : ''}
-              </div>
-              <div className="flex-1 sm:flex-none">
-                <SortOptions value={filters.sortBy} onChange={handleSortChange} />
-              </div>
-            </div>
-
-            {/* Product Grid or Loading/Error State */}
-            {loading && <ProductListLoadingState />}
-            {error && <ProductListErrorState error={error} onRetry={refetch} />}
-
-            {!loading && !error && products.length === 0 && (
-              <EmptyState />
-            )}
-
-            {!loading && !error && products.length > 0 && (
-              <>
-                <ProductGrid
-                  products={products}
-                  loading={loading}
-                  onAddToCart={handleAddToCart}
-                  onAddToWishlist={handleAddToWishlist}
-                  onQuickView={handleQuickView}
-                  onCompare={handleCompare}
-                />
-
-                {/* Pagination */}
-                {pagination.totalPages > 1 && (
-                  <div className="flex justify-center pt-8">
-                    <Pagination
-                      current={pagination.page}
-                      total={pagination.totalPages}
-                      onPageChange={goToPage}
-                      isLoading={loading}
-                    />
-                  </div>
-                )}
-              </>
-            )}
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <button
+            onClick={() => setFilterSidebarOpen(true)}
+            className="md:hidden flex-1 inline-flex items-center justify-center gap-2 px-4 h-10 rounded-xl border border-slate-200 bg-white/80 text-slate-700 font-semibold text-sm transition-all hover:bg-slate-50 active:scale-95 shadow-sm"
+          >
+            <Filter size={16} />
+            Lọc sản phẩm
+          </button>
+          <div className="flex-1 md:flex-none">
+            <SortOptions value={filters.sortBy} onChange={handleSortChange} />
           </div>
         </div>
       </div>
 
-      {/* Mobile Filter Sidebar Drawer */}
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]">
+        {/* Sticky Sidebar */}
+        <div className="hidden lg:block relative">
+          <div className="sticky top-24">
+            <FilterSidebar
+              categories={categories}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onReset={handleReset}
+            />
+          </div>
+        </div>
+
+        {/* Product Area */}
+        <div className="space-y-6">
+          {loading && <ProductListLoadingState />}
+          {error && <ProductListErrorState error={error} onRetry={refetch} />}
+          {!loading && !error && products.length === 0 && <EmptyState />}
+          {!loading && !error && products.length > 0 && (
+            <>
+              <ProductGrid
+                products={products}
+                loading={loading}
+                onAddToCart={handleAddToCart}
+                onAddToWishlist={handleAddToWishlist}
+                onQuickView={handleQuickView}
+                onCompare={handleCompare}
+              />
+              {pagination.totalPages > 1 && (
+                <div className="flex justify-center pt-8 pb-4">
+                  <Pagination
+                    current={pagination.page}
+                    total={pagination.totalPages}
+                    onPageChange={goToPage}
+                    isLoading={loading}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile Filter Drawer */}
       <MobileFilterDrawer
         isOpen={filterSidebarOpen}
         onClose={() => setFilterSidebarOpen(false)}

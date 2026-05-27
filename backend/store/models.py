@@ -1,11 +1,9 @@
-import os
 import json
 from django.db import models
-from datetime import datetime
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.utils.timezone import now
+from django.utils import timezone
 
 # ------------------------ User ---------------------------
 # create customer profile
@@ -60,8 +58,8 @@ class Product(models.Model):
     def get_discounted_price(self):
         active_sales = SaleEvent.objects.filter(
             category=self.category,
-            start_date__lte=datetime.now(),
-            end_date__gte=datetime.now()
+            start_date__lte=timezone.now(),
+            end_date__gte=timezone.now()
         ).order_by('-discount_percentage')  # Nếu có nhiều giảm giá lấy cái nào giảm nhiều nhất
 
         if active_sales.exists():
@@ -115,8 +113,8 @@ class SaleEvent(models.Model):
     
     def is_active(self):
         """Kiểm tra đợt giảm giá còn hiệu lực không."""
-        now = datetime.now()
-        return self.start_date <= now <= self.end_date
+        current = timezone.now()
+        return self.start_date <= current <= self.end_date
     
 # Tự động cập nhật giá sản phẩm sau khi thêm/sửa/xóa SaleEvent.
 @receiver(post_save, sender=SaleEvent)
@@ -135,7 +133,7 @@ class Review(models.Model):
     comment = models.TextField(blank=True, null=True)
     sentiment = models.CharField(max_length=10, choices=[('positive', 'Positive'), ('negative', 'Negative')], null=True)
     score_analysis = models.DecimalField(max_digits=6, decimal_places=5, null=True, editable=False)
-    review_date = models.DateTimeField(default=datetime.now)
+    review_date = models.DateTimeField(default=timezone.now)
     is_spam = models.BooleanField(default=False)
 
     class Meta:

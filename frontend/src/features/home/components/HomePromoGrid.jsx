@@ -6,7 +6,7 @@ function HomePromoGrid({ categories = [] }) {
   }
 
   return (
-    <section className="mx-4.5" id="promotions" aria-label="Danh mục nổi bật">
+    <section className="mx-4.5 mb-8" id="promotions" aria-label="Danh mục nổi bật">
       <div className="flex justify-between snap-x snap-mandatory gap-3.5 overflow-x-auto px-1 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {categories.slice(0, 8).map((category) => (
           <a

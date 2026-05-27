@@ -12,6 +12,8 @@ from payment.forms import PaymentForm, ShippingForm
 from payment.models import Order, ShippingAddress, OrderItem
 from store.models import Profile
 from .vnpay import vnpay
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.views.decorators.csrf import csrf_exempt
 
 def orders(request, pk):
     if request.user.is_authenticated:
@@ -103,7 +105,6 @@ def billing_info(request):
         #  Create a session with Shipping info
         my_shipping = request.POST
         request.session['my_shipping'] = my_shipping
-        print(request.session.get('my_shipping'))
 
         try:
             shipping_user = ShippingAddress.objects.get(user__id=request.user.id)
@@ -147,66 +148,68 @@ def billing_info(request):
         messages.success(request, "Access Cancled")
         return redirect('home')
     
+def _create_order_from_cart(request, user, my_shipping, totals):
+    """
+    Extract shared order creation, item creation, and cart cleanup logic.
+    Returns the created Order instance.
+    """
+    cart = Cart(request)
+    cart_products = cart.get_prods()
+    quantities = cart.get_quants()
+
+    full_name = my_shipping['shipping_full_name']
+    phone = my_shipping['shipping_phone']
+    shipping_address = my_shipping['shipping_address']
+
+    # create Order 
+    create_order = Order(
+        user=user,
+        full_name=full_name,
+        phone=phone,
+        shipping_address=shipping_address,
+        amount_paid=totals
+    )
+    create_order.save()
+
+    # Add order item
+    order_id = create_order.pk
+    for product in cart_products:
+        product_id = product.id
+        price = product.sale_price if product.is_sale else product.price
+
+        for key, value in quantities.items():
+            if int(key) == product.id:
+                create_order_item = OrderItem(
+                    order_id=order_id,
+                    product_id=product_id,
+                    user=user,
+                    quantity=value,
+                    price=price
+                )
+                create_order_item.save()
+
+    # Delete out of products cart when bought
+    for key in list(request.session.keys()):
+        if key == 'session_key':
+            del request.session[key]
+
+    if 'shipping_method' in request.session:
+        del request.session['shipping_method']
+
+    # Delete our cart from db when bought successfully
+    Profile.objects.filter(user=user).update(old_cart='')
+
+    return create_order
+
+
 def process_order(request):
     if request.POST:
         cart = Cart(request)
-        cart_products = cart.get_prods 
-        quantities = cart.get_quants
         totals = cart.total_final()
-
-        # Get billing info from card 
-        payment_form = PaymentForm(request.POST or None)
-
-        # Get shipping Session data
         my_shipping = request.session.get('my_shipping')
-        
-        # Create Shipping info from session info
-        full_name = my_shipping['shipping_full_name']
-        phone = my_shipping['shipping_phone']
-        shipping_address = my_shipping['shipping_address']
 
         if request.user.is_authenticated:
-           #logged in
-            user = request.user
-            # create Order 
-            create_order = Order(
-                user=user,
-                full_name=full_name,
-                phone=phone,
-                shipping_address=shipping_address,
-                amount_paid=totals
-            )
-            create_order.save()
-
-            # Add order item
-            # Get order id
-            order_id = create_order.pk
-            # Get product id
-            for product in cart_products():
-                product_id = product.id
-                
-                if product.is_sale:
-                    price = product.sale_price
-                else:
-                    price = product.price
-
-                for key, value in quantities().items():
-                    if int(key) == product.id:
-                        create_order_item = OrderItem(order_id=order_id, product_id=product_id, user=user, quantity=value, price=price)
-                        create_order_item.save()
-
-            # Delete out of products cart when buyed
-            for key in list(request.session.keys()):
-                if key == 'session_key':
-                    del request.session[key]
-
-            if 'shipping_method' in request.session:
-                del request.session['shipping_method']
-
-            # Delete our cart from db when buyed success
-            current_user = Profile.objects.filter(user__id=request.user.id)
-            current_user.update(old_cart='')
-
+            _create_order_from_cart(request, request.user, my_shipping, totals)
             messages.success(request, "Đặt hàng thành công!")
             return redirect('home')
         else:
@@ -220,137 +223,37 @@ def process_order(request):
 def process_order_paypal(request):
     if request.POST:
         cart = Cart(request)
-        cart_products = cart.get_prods 
-        quantities = cart.get_quants
         totals = cart.total_final()
-
-        # Get billing info from card 
-        payment_form = PaymentForm(request.POST or None)
-
-        # Get shipping Session data
         my_shipping = request.session.get('my_shipping')
-        print(my_shipping)
-
-        # Lấy thông tin địa chỉ từ request.POST
-        full_name = my_shipping['shipping_full_name']
-        phone = my_shipping['shipping_phone']
-        shipping_address = my_shipping['shipping_address']
 
         if request.user.is_authenticated:
-            # logged in
-            user = request.user
-            # create Order
-            create_order = Order(
-                user=user,
-                full_name=full_name,
-                phone=phone,
-                shipping_address=shipping_address,
-                amount_paid=totals
-            )
-            create_order.save()
-
-            # Add order item
-            # Get order id
-            order_id = create_order.pk
-            # Get product id
-            for product in cart_products():
-                product_id = product.id
-                
-                if product.is_sale:
-                    price = product.sale_price
-                else:
-                    price = product.price
-
-                for key, value in quantities().items():
-                    if int(key) == product.id:
-                        create_order_item = OrderItem(order_id=order_id, product_id=product_id, user=user, quantity=value, price=price)
-                        create_order_item.save()
-
-            # Delete out of products cart when buyed
-            for key in list(request.session.keys()):
-                if key == 'session_key':
-                    del request.session[key]
-
-            if 'shipping_method' in request.session:
-                del request.session['shipping_method']
-
-            # Delete our cart from db when buyed success
-            current_user = Profile.objects.filter(user__id=request.user.id)
-            current_user.update(old_cart='')
-
+            _create_order_from_cart(request, request.user, my_shipping, totals)
             messages.success(request, "Đặt hàng thành công!")
             return redirect('home')
         else:
             messages.success(request, "Xin hãy đăng nhập hoặc đăng ký để mua hàng...")
             return redirect('home')
+    else:
+        messages.success(request, "Truy cập đã bị chặn")
+        return redirect('home')
     
-
     
 def process_order_upon(request):
     if request.POST:
         cart = Cart(request)
-        cart_products = cart.get_prods 
-        quantities = cart.get_quants
         totals = cart.total_final()
-
-        # Get billing info from card 
-        payment_form = PaymentForm(request.POST or None)
-
-        # Get shipping Session data
         my_shipping = request.session.get('my_shipping')
 
-        # Lấy thông tin địa chỉ từ request.POST
-        full_name = my_shipping['shipping_full_name']
-        phone = my_shipping['shipping_phone']
-        shipping_address = my_shipping['shipping_address']
-
         if request.user.is_authenticated:
-            # logged in
-            user = request.user
-            # create Order
-            create_order = Order(
-                user=user,
-                full_name=full_name,
-                phone=phone,
-                shipping_address=shipping_address,
-                amount_paid=totals
-            )
-            create_order.save()
-
-            # Add order item
-            # Get order id
-            order_id = create_order.pk
-            # Get product id
-            for product in cart_products():
-                product_id = product.id
-                
-                if product.is_sale:
-                    price = product.sale_price
-                else:
-                    price = product.price
-
-                for key, value in quantities().items():
-                    if int(key) == product.id:
-                        create_order_item = OrderItem(order_id=order_id, product_id=product_id, user=user, quantity=value, price=price)
-                        create_order_item.save()
-
-            # Delete out of products cart when buyed
-            for key in list(request.session.keys()):
-                if key == 'session_key':
-                    del request.session[key]
-
-            if 'shipping_method' in request.session:
-                del request.session['shipping_method']
-
-            # Delete our cart from db when buyed success
-            current_user = Profile.objects.filter(user__id=request.user.id)
-            current_user.update(old_cart='')
-
+            _create_order_from_cart(request, request.user, my_shipping, totals)
             messages.success(request, "Đặt hàng thành công!")
             return redirect('home')
         else:
             messages.success(request, "Xin hãy đăng nhập hoặc đăng ký để mua hàng...")
             return redirect('home')
+    else:
+        messages.success(request, "Truy cập đã bị chặn")
+        return redirect('home')
 
 # Lấy dữ liệu địa giới hành chính Việt Nam
 def get_data(request):
@@ -417,59 +320,12 @@ def get_client_ip(request):
 def vnpay_checkout(request):
     if request.method == "POST":
         cart = Cart(request)
-        cart_products = cart.get_prods 
-        quantities = cart.get_quants
         totals = cart.total_final()
-
-        # Get shipping Session data
         my_shipping = request.session.get('my_shipping')
 
-        # Lấy thông tin địa chỉ từ request.POST
-        full_name = my_shipping['shipping_full_name']
-        phone = my_shipping['shipping_phone']
-        shipping_address = my_shipping['shipping_address']
-
         if request.user.is_authenticated:
-            # logged in
-            user = request.user
-            # create Order
-            create_order = Order(
-                user=user,
-                full_name=full_name,
-                phone=phone,
-                shipping_address=shipping_address,
-                amount_paid=totals
-            )
-            create_order.save()
-
-            # Add order item
-            # Get order id
+            create_order = _create_order_from_cart(request, request.user, my_shipping, totals)
             order_id = create_order.pk
-            # Get product id
-            for product in cart_products():
-                product_id = product.id
-                
-                if product.is_sale:
-                    price = product.sale_price
-                else:
-                    price = product.price
-
-                for key, value in quantities().items():
-                    if int(key) == product.id:
-                        create_order_item = OrderItem(order_id=order_id, product_id=product_id, user=user, quantity=value, price=price)
-                        create_order_item.save()
-
-            # Delete out of products cart when buyed
-            for key in list(request.session.keys()):
-                if key == 'session_key':
-                    del request.session[key]
-
-            if 'shipping_method' in request.session:
-                del request.session['shipping_method']
-
-            # Delete our cart from db when buyed success
-            current_user = Profile.objects.filter(user__id=request.user.id)
-            current_user.update(old_cart='')
 
         amount = totals  
         order_desc = request.POST['description']
@@ -509,3 +365,83 @@ def payment_return(request):
         return render(request, "payment/payment_success.html", {"result": "success"})
     else:
         return render(request, "payment/payment_success.html", {"result": "fail", "message": "Sai checksum hoặc thanh toán thất bại."})
+
+@csrf_exempt
+def checkout_rest(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Phương thức không được hỗ trợ'}, status=405)
+
+    # 1. Authenticate user using JWT
+    jwt_auth = JWTAuthentication()
+    try:
+        validated = jwt_auth.authenticate(request)
+        if validated is None:
+            return JsonResponse({'error': 'Chưa xác thực hoặc token không hợp lệ'}, status=401)
+        user, _ = validated
+    except Exception:
+        return JsonResponse({'error': 'Token không hợp lệ hoặc đã hết hạn'}, status=401)
+
+    # 2. Parse request body
+    try:
+        body = json.loads(request.body)
+    except (ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+
+    full_name = body.get('shipping_full_name', '').strip()
+    phone = body.get('shipping_phone', '').strip()
+    shipping_address = body.get('shipping_address', '').strip()
+    payment_method = body.get('payment_method', 'cod')
+
+    if not full_name or not phone or not shipping_address:
+        return JsonResponse({'error': 'Vui lòng cung cấp đầy đủ thông tin giao nhận'}, status=400)
+
+    # 3. Read Cart items
+    cart = Cart(request)
+    cart_products = cart.get_prods()
+    quantities = cart.get_quants()
+    totals = cart.total_final()
+
+    if not cart_products:
+        return JsonResponse({'error': 'Giỏ hàng của bạn đang trống'}, status=400)
+
+    # 4. Create Order record
+    order = Order(
+        user=user,
+        full_name=full_name,
+        phone=phone,
+        shipping_address=shipping_address,
+        amount_paid=totals
+    )
+    order.save()
+
+    # 5. Create OrderItem records
+    for product in cart_products:
+        product_id = product.id
+        price = product.sale_price if product.is_sale else product.price
+
+        for key, value in quantities.items():
+            if int(key) == product.id:
+                OrderItem.objects.create(
+                    order=order,
+                    product_id=product_id,
+                    user=user,
+                    quantity=value,
+                    price=price
+                )
+
+    # 6. Clear session cart
+    for key in list(request.session.keys()):
+        if key == 'session_key':
+            del request.session[key]
+
+    if 'shipping_method' in request.session:
+        del request.session['shipping_method']
+
+    # 7. Clear old cart in database profile
+    Profile.objects.filter(user=user).update(old_cart='')
+
+    return JsonResponse({
+        'success': True,
+        'order_id': order.id,
+        'message': 'Đặt hàng thành công!'
+    })

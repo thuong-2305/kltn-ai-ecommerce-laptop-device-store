@@ -104,9 +104,9 @@ function HomeFeaturedProducts({ tabs = [], activeTabId, onSelectTab, products = 
   }
 
   return (
-    <section className="mx-4.5 flex flex-col gap-3.5" id="featured">
+    <section className="mx-4.5 mb-8 flex flex-col gap-3.5" id="featured">
       {/* Head */}
-      <div className="flex items-center justify-between gap-4 rounded-xxl bg-white/80 py-3.5 shadow-standard">
+      <div className="flex items-center justify-between gap-4 rounded-xxl bg-white/80 px-4.5 py-3.5 shadow-standard">
         <div className='flex items-center justify-center gap-5'>
           <h1 className="text-3xl font-extrabold text-title text-slate-900">SẢN PHẨM NỔI BẬC</h1>
       

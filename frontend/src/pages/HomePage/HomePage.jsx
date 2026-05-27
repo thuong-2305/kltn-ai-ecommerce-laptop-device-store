@@ -5,12 +5,15 @@ import HomeLoadingState from '../../features/home/components/HomeLoadingState'
 import HomeErrorState from '../../features/home/components/HomeErrorState'
 import HomeHeroSection from '../../features/home/components/HomeHeroSection'
 import HomePromoGrid from '../../features/home/components/HomePromoGrid'
+import HomeFlashSaleSection from '../../features/home/components/HomeFlashSaleSection'
 import HomeFeaturedProducts from '../../features/home/components/HomeFeaturedProducts'
 import HomeSupportBanners from '../../features/home/components/HomeSupportBanners'
 import HomeBrandStrip from '../../features/home/components/HomeBrandStrip'
 import HomeNewsSection from '../../features/home/components/HomeNewsSection'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 
 function HomePage() {
+  useDocumentTitle('Trang chủ', 'LAPTOP DEVICE STORE - Cửa hàng laptop uy tín hàng đầu, cung cấp các dòng laptop gaming, văn phòng, đồ họa chính hãng.')
   const homeData = useHomeStore((state) => state.homeData)
   const loading = useHomeStore((state) => state.loading)
   const error = useHomeStore((state) => state.error)
@@ -80,6 +83,7 @@ function HomePage() {
         featuredProductCount={viewModel.stats.featured_product_count}
       />
       <HomePromoGrid categories={viewModel.categories} />
+      <HomeFlashSaleSection products={viewModel.featuredProducts} />
       <HomeFeaturedProducts
         tabs={viewModel.productTabs}
         activeTabId={activeTabId}

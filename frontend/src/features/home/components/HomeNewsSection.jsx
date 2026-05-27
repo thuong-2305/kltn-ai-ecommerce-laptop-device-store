@@ -63,10 +63,8 @@ function NewsArticleCard({ article }) {
  */
 function HomeNewsSection({ newsCards = [] }) {
   return (
-    <section className="relative w-full my-5" id="news" aria-label="Tin tức công nghệ">
-      {/* Section Container */}
-      <div className="mx-4.5 mb-4">
-        {/* Header Section */}
+    <section className="mx-4.5 mb-8" id="news" aria-label="Tin tức công nghệ">
+      {/* Header Section */}
         <div className="flex items-center justify-between gap-4 mb-8">
           <div className="flex flex-col gap-2">
             {/* Label */}
@@ -114,7 +112,6 @@ function HomeNewsSection({ newsCards = [] }) {
             </p>
           </div>
         )}
-      </div>
     </section>
   )
 }

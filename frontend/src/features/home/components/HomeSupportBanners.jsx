@@ -219,10 +219,10 @@ function HomeSupportBanners() {
 
   return (
     <section
-      className="relative w-full overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.46),rgba(248,250,252,0.78))] shadow-standard"
+      className="mx-4.5 mb-8 relative overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.12),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.46),rgba(248,250,252,0.78))] shadow-standard border border-slate-200/50"
       id="guide"
     > 
-      <div className="relative grid gap-6 mx-5 py-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-10 lg:mx-5 lg:py-10">
+      <div className="relative grid gap-6 p-6 md:p-8 lg:p-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-10">
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-3">
             <p className="text-label text-slate-500">

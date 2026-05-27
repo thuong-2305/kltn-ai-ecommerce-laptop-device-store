@@ -14,4 +14,5 @@ urlpatterns = [
     path('get-data/', views.get_data, name='get_data'),
     path('vnpay_checkout/', views.vnpay_checkout, name='vnpay_checkout'),
     path('vnpay_return/', views.payment_return, name='vnpay_return'),
+    path('checkout-rest/', views.checkout_rest, name='checkout_rest'),
 ]

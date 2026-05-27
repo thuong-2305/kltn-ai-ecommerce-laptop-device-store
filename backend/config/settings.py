@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 from decouple import config
 
@@ -11,11 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -30,6 +29,7 @@ INSTALLED_APPS = [
     # Add installed
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 
     # Add app
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'payment',
     # 'recommend',  # Temporarily disabled - requires pandas, sklearn
     'wishlist',
+    'auth_api',
 ]
 
 MIDDLEWARE = [
@@ -55,7 +56,9 @@ MIDDLEWARE = [
 # Cho phep React dev server goi API
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
+CORS_ALLOW_CREDENTIALS = True
 
 CACHES = {
     'default': {
@@ -69,6 +72,19 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
+
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+# Google OAuth
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 
 ROOT_URLCONF = 'config.urls'
 

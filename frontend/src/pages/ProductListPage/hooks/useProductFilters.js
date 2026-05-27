@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import api from '../../../services/api'
 
 /**
  * useProductFilters - Custom hook untuk manage product filters dan pagination
@@ -35,21 +36,18 @@ export function useProductFilters() {
       setLoading(true)
       setError(null)
 
-      const queryParams = new URLSearchParams()
-      if (filters.category) queryParams.append('category', filters.category)
-      if (filters.search) queryParams.append('search', filters.search)
-      queryParams.append('min_price', filters.minPrice)
-      queryParams.append('max_price', filters.maxPrice)
-      queryParams.append('sort', filters.sortBy)
-      queryParams.append('page', pagination.page)
-      queryParams.append('limit', pagination.limit)
+      const params = {}
+      if (filters.category) params.category = filters.category
+      if (filters.search) params.search = filters.search
+      params.min_price = filters.minPrice
+      params.max_price = filters.maxPrice
+      params.sort = filters.sortBy
+      params.page = pagination.page
+      params.limit = pagination.limit
 
-      // Dummy API call - replace dengan actual endpoint
-      const response = await fetch(`/api/products?${queryParams}`)
-      
-      if (!response.ok) throw new Error('Failed to fetch products')
-      
-      const data = await response.json()
+      // Gunakan axios instance dari services/api.js
+      const response = await api.get('/products', { params })
+      const data = response.data
       
       setProducts(data.results || [])
       setPagination((prev) => ({
@@ -58,7 +56,10 @@ export function useProductFilters() {
         totalPages: Math.ceil((data.count || 0) / prev.limit),
       }))
     } catch (err) {
-      setError(err.message)
+      console.error('Error fetching products:', err)
+      // Tangani pesan error secara gracefully
+      const errorMessage = err.response?.data?.message || err.message || 'Lỗi khi tải dữ liệu sản phẩm. Vui lòng thử lại sau.'
+      setError(errorMessage)
       setProducts([])
     } finally {
       setLoading(false)
@@ -66,10 +67,14 @@ export function useProductFilters() {
   }, [filters, pagination.page, pagination.limit])
 
   /**
-   * Fetch products ketika filter atau page berubah
+   * Fetch products ketika filter atau page berubah (dengan debounce)
    */
   useEffect(() => {
-    fetchProducts()
+    const timer = setTimeout(() => {
+      fetchProducts()
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timer)
   }, [fetchProducts])
 
   /**

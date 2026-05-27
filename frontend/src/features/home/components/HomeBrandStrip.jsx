@@ -8,15 +8,15 @@ function HomeBrandStrip() {
   ]
 
   return (
-    <section className="brand-strip " aria-label="Thương hiệu nổi bật">
-      <div className="bg-transparent border-none rounded-none shadow-none section-block__head section-block__head--compact">
+    <section className="mx-4.5 mb-8" aria-label="Thương hiệu nổi bật">
+      <div className="bg-transparent border-none rounded-none shadow-none section-block__head section-block__head--compact p-0">
         <div>
           <p className="text-label text-slate-500">Thương hiệu nổi bật</p>
           <h2 className="text-3xl font-extrabold text-title text-slate-900">Chọn theo hãng bạn tin dùng</h2>
         </div>
       </div>
 
-      <div className="mx-4.5 grid-cols-2 gap-3 brand-grid sm:grid-cols-4 sm:gap-4 lg:grid-cols-8">
+      <div className="grid grid-cols-2 gap-3 brand-grid sm:grid-cols-4 sm:gap-4 lg:grid-cols-8">
         {brands.map((brand) => (
           <div
             key={brand.name}

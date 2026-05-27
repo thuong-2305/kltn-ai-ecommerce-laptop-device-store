@@ -4,14 +4,6 @@
  * Use these constants instead of hardcoding values in JSX
  */
 
-import {
-  SPACING,
-  RADIUS,
-  SHADOWS,
-  BORDERS,
-  TRANSITIONS,
-} from '../theme/tokens'
-import { BRAND_COLORS } from '../theme/colors'
 
 // ============= SEMANTIC CLASS REFERENCES =============
 // Use these as className values - no inline styles needed

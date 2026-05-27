@@ -11,10 +11,10 @@ function MainNav() {
     () => [
       { href: '/', label: 'Trang chủ', isRoute: true },
       { href: '/products', label: 'Sản phẩm', isRoute: true },
-      { href: '#promotions', label: 'Khuyến mãi', isRoute: false },
-      { href: '#news', label: 'Tin tức', isRoute: false },
-      { href: '#guide', label: 'Hướng dẫn', isRoute: false },
-      { href: '#footer', label: 'Liên hệ', isRoute: false },
+      { href: '/promotions', label: 'Khuyến mãi', isRoute: true },
+      { href: '/blog', label: 'Tin tức', isRoute: true },
+      { href: '/guide', label: 'Hướng dẫn', isRoute: true },
+      { href: '/contact', label: 'Liên hệ', isRoute: true },
     ],
     [],
   )
@@ -41,7 +41,7 @@ function MainNav() {
   }
 
   return (
-    <nav className="flex flex-wrap items-center gap-5 bg-transparent px-5 py-2.5 shadow-none lg:px-5">
+    <nav className="flex flex-wrap items-center gap-5 bg-transparent px-4.5 py-2.5 shadow-none lg:px-4.5">
       <button type="button" className={`inline-flex flex-row-reverse justify-between w-full min-h-10 shrink-0 items-center gap-2 rounded-md bg-linear-to-r ${COLOR_ACCENTS.BLUE_DARK} px-3.5 py-3 cursor-pointer font-bold text-white shadow-[0_10px_22px_rgba(37,99,235,0.22)] sm:w-60`}>
         <span className="text-sm">☰</span>
         <span>Danh mục sản phẩm</span>
