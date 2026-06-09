@@ -2,14 +2,21 @@ import hashlib
 import hmac
 import urllib.parse
 
-class vnpay:
-    requestData = {}
-    responseData = {}
+
+class VNPay:
+    """VNPay payment gateway integration.
+    
+    Handles creating payment URLs and validating response signatures.
+    """
+
+    def __init__(self):
+        # Instance attributes instead of class-level to avoid shared state
+        self.requestData = {}
+        self.responseData = {}
 
     def get_payment_url(self, vnpay_payment_url, secret_key):
         inputData = sorted(self.requestData.items())
         queryString = ''
-        hasData = ''
         seq = 0
         for key, val in inputData:
             if seq == 1:
@@ -21,10 +28,12 @@ class vnpay:
         return vnpay_payment_url + '?' + queryString + '&vnp_SecureHash=' + hashValue
 
     def validate_response(self, secret_key):
-        vnp_SecureHash = self.responseData['vnp_SecureHash']
-        self.responseData.pop('vnp_SecureHash', None)
-        self.responseData.pop('vnp_SecureHashType', None)
-        inputData = sorted(self.responseData.items())
+        vnp_SecureHash = self.responseData.get('vnp_SecureHash', '')
+        # Work on a copy to avoid mutating the original data
+        data_copy = dict(self.responseData)
+        data_copy.pop('vnp_SecureHash', None)
+        data_copy.pop('vnp_SecureHashType', None)
+        inputData = sorted(data_copy.items())
 
         hasData = ''
         seq = 0
@@ -41,3 +50,7 @@ class vnpay:
     @staticmethod
     def __hmacsha512(key, data):
         return hmac.new(key.encode('utf-8'), data.encode('utf-8'), hashlib.sha512).hexdigest()
+
+
+# Backward compatibility alias
+vnpay = VNPay

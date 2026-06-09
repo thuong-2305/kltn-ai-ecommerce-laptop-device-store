@@ -52,6 +52,7 @@ export const useWishlistStore = create((set, get) => ({
   moveToCart: async (productId) => {
     try {
       const res = await wishlistService.wishlistToCart(productId)
+      set({ wishlist: res.data.results || [] })
       return { success: true, message: res.data.message }
     } catch (err) {
       console.error('Error moving to cart:', err)
@@ -61,15 +62,20 @@ export const useWishlistStore = create((set, get) => ({
 
   clearWishlist: async () => {
     const { wishlist } = get()
+    if (wishlist.length === 0) return { success: true, message: 'Danh sách trống' }
+    
+    set({ loading: true })
     try {
-      for (const item of wishlist) {
-        await wishlistService.removeFromWishlist(item.id)
-      }
-      set({ wishlist: [] })
+      await Promise.all(
+        wishlist.map(item => wishlistService.removeFromWishlist(item.id))
+      )
+      set({ wishlist: [], error: null })
       return { success: true, message: 'Đã xóa tất cả sản phẩm khỏi danh sách yêu thích' }
     } catch (err) {
-      console.error('Error clearing wishlist:', err)
+      console.error('Error clearing wishlist concurrently:', err)
       return { success: false, message: 'Xóa danh sách thất bại' }
+    } finally {
+      set({ loading: false })
     }
   }
 }))

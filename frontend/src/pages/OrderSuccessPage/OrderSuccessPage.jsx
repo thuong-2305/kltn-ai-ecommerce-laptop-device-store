@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { CheckCircle2, Package, Truck, MapPin, CreditCard, ChevronRight, Phone, MessageCircle, Mail } from 'lucide-react'
+import { CheckCircle2, Package, Truck, MapPin, CreditCard, ChevronRight, Phone, MessageCircle, Mail, Sparkles } from 'lucide-react'
 
 const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + '₫'
 
@@ -34,7 +34,10 @@ function OrderSuccessPage() {
         <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-4 animate-bounce">
           <CheckCircle2 size={44} className="text-green-500" />
         </div>
-        <h1 className="text-2xl font-black text-slate-900 mb-1">Đặt hàng thành công! 🎉</h1>
+        <h1 className="text-2xl font-black text-slate-900 mb-1 flex items-center justify-center gap-1.5">
+          Đặt hàng thành công!
+          <Sparkles size={24} className="text-amber-500 fill-amber-300 animate-pulse shrink-0" />
+        </h1>
         <p className="text-slate-500 text-sm mb-4">Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ xác nhận trong thời gian sớm nhất.</p>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 border border-blue-200">
           <Package size={16} className="text-blue-600" />

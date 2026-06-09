@@ -2,7 +2,8 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Star, Package, CheckCircle2, AlertCircle, Upload, X,
-  Plus, Loader2, Edit3, Shield, Lightbulb, Image, Phone, Mail, Check
+  Plus, Loader2, Edit3, Shield, Lightbulb, Image, Phone, Mail, Check,
+  Smile, Frown, Meh
 } from 'lucide-react'
 
 const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + '₫'
@@ -163,7 +164,19 @@ export function ReviewForm({ onSubmit, submitting, initial = null }) {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     setErrors({})
-    const result = await onSubmit({ rating, title, comment, show_name: showName })
+    
+    const formData = new FormData()
+    formData.append('rating', rating)
+    formData.append('title', title)
+    formData.append('comment', comment)
+    formData.append('show_name', showName)
+    images.forEach(img => {
+      if (img.file) {
+        formData.append('images', img.file)
+      }
+    })
+
+    const result = await onSubmit(formData)
     if (result.success) {
       setToast({ type: 'success', msg: result.message })
     } else {
@@ -312,6 +325,8 @@ export function RatingOverview({ stats }) {
 export function ReviewCard({ review }) {
   const [title, ...rest] = (review.comment || '').split('\n')
   const body = rest.join('\n').trim()
+  const [activeImage, setActiveImage] = useState(null)
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-all">
       <div className="flex items-start gap-3">
@@ -326,17 +341,56 @@ export function ReviewCard({ review }) {
           <StarDisplay value={review.rating} size={13} />
           {title && <p className="font-bold text-slate-800 text-sm mt-2">{title}</p>}
           {body && <p className="text-sm text-slate-600 mt-1 leading-relaxed">{body}</p>}
+          
+          {/* Images Grid */}
+          {review.images && review.images.length > 0 && (
+            <div className="flex gap-2 flex-wrap mt-3">
+              {review.images.map((url, i) => (
+                <div key={i} className="w-16 h-16 rounded-lg overflow-hidden border border-slate-100 cursor-zoom-in hover:border-blue-400 active:scale-95 transition-all">
+                  <img src={url} alt="" className="w-full h-full object-cover" onClick={() => setActiveImage(url)} />
+                </div>
+              ))}
+            </div>
+          )}
+
           {review.sentiment && (
-            <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+            <span className={`inline-flex items-center gap-1 mt-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
               review.sentiment === 'positive' ? 'bg-green-50 border-green-200 text-green-700' :
               review.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-700' :
               'bg-slate-50 border-slate-200 text-slate-600'
             }`}>
-              {review.sentiment === 'positive' ? '😊 Tích cực' : review.sentiment === 'negative' ? '😞 Tiêu cực' : '😐 Trung lập'}
+              {review.sentiment === 'positive' ? (
+                <>
+                  <Smile size={11} className="shrink-0" />
+                  <span>Tích cực</span>
+                </>
+              ) : review.sentiment === 'negative' ? (
+                <>
+                  <Frown size={11} className="shrink-0" />
+                  <span>Tiêu cực</span>
+                </>
+              ) : (
+                <>
+                  <Meh size={11} className="shrink-0" />
+                  <span>Trung lập</span>
+                </>
+              )}
             </span>
           )}
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {activeImage && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setActiveImage(null)}>
+          <div className="relative max-w-3xl max-h-[80vh] bg-white rounded-2xl overflow-hidden shadow-2xl p-2" onClick={e => e.stopPropagation()}>
+            <img src={activeImage} alt="Review zoom" className="max-w-full max-h-[75vh] object-contain rounded-lg" />
+            <button className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white flex items-center justify-center transition-colors" onClick={() => setActiveImage(null)}>
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

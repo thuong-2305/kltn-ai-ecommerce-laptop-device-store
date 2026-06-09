@@ -1,19 +1,18 @@
-import axios from 'axios'
-import { API_BASE_URL } from '../config/api'
+import apiClient from './apiClient'
 
-// Cart API uses a separate axios instance pointing at /api/cart/
-// (Django session-based — no auth token needed for cart ops)
-const cartApi = axios.create({
-  baseURL: `${API_BASE_URL}/api/cart/`,
-  withCredentials: true, // needed to maintain Django session across requests
-})
+export const getCart = () => apiClient.get('cart/')
 
-export const getCart = () => cartApi.get('')
-export const addToCart = (productId, quantity = 1) =>
-  cartApi.post('add/', { product_id: productId, quantity })
-export const updateCartItem = (productId, quantity) =>
-  cartApi.post('update/', { product_id: productId, quantity })
-export const deleteCartItem = (productId) =>
-  cartApi.post('delete/', { product_id: productId })
+export const addToCart = (productId, quantity = 1, variantId = null) =>
+  apiClient.post('cart/add/', { product_id: productId, quantity, variant_id: variantId })
+
+export const updateCartItem = (productId, quantity, variantId = null) =>
+  apiClient.post('cart/update/', { product_id: productId, quantity, variant_id: variantId })
+
+export const deleteCartItem = (productId, variantId = null) =>
+  apiClient.post('cart/delete/', { product_id: productId, variant_id: variantId })
+
 export const updateShipping = (method) =>
-  cartApi.post('shipping/', { shipping_method: method })
+  apiClient.post('cart/shipping/', { shipping_method: method })
+
+export const mergeCart = (guestCart) =>
+  apiClient.post('cart/merge/', { cart: guestCart })

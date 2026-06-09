@@ -2,8 +2,9 @@
  * AuthContext — Global auth state management
  * Stores JWT in localStorage, provides: user, login, logout, register
  */
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { authApi } from '../services/authApi'
+import { mergeCart } from '../services/cartApi'
 
 const AuthContext = createContext(null)
 
@@ -54,6 +55,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem(TOKEN_KEY, data.access)
     localStorage.setItem(REFRESH_KEY, data.refresh)
     setUser(data.user)
+    try {
+      await mergeCart()
+    } catch (err) {
+      console.error('Failed to merge cart on registration:', err)
+    }
     return data.user
   }, [])
 
@@ -63,6 +69,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem(TOKEN_KEY, data.access)
     localStorage.setItem(REFRESH_KEY, data.refresh)
     setUser(data.user)
+    try {
+      await mergeCart()
+    } catch (err) {
+      console.error('Failed to merge cart on login:', err)
+    }
     return data.user
   }, [])
 
@@ -72,7 +83,17 @@ export function AuthProvider({ children }) {
     localStorage.setItem(TOKEN_KEY, data.access)
     localStorage.setItem(REFRESH_KEY, data.refresh)
     setUser(data.user)
+    try {
+      await mergeCart()
+    } catch (err) {
+      console.error('Failed to merge cart on Google login:', err)
+    }
     return data.user
+  }, [])
+
+  // ── Send OTP ──────────────────────────────────────────────────
+  const sendOTP = useCallback(async (email) => {
+    return await authApi.sendOTP(email)
   }, [])
 
   // ── Logout ────────────────────────────────────────────────────
@@ -85,19 +106,22 @@ export function AuthProvider({ children }) {
   }, [])
 
   // ── Helpers ───────────────────────────────────────────────────
-  const getAccessToken = () => localStorage.getItem(TOKEN_KEY)
+  const getAccessToken = useCallback(() => localStorage.getItem(TOKEN_KEY), [])
+
+  const contextValue = useMemo(() => ({
+    user,
+    isAuthenticated: !!user,
+    loading,
+    login,
+    register,
+    logout,
+    loginWithGoogle,
+    getAccessToken,
+    sendOTP,
+  }), [user, loading, login, register, logout, loginWithGoogle, getAccessToken, sendOTP])
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated: !!user,
-      loading,
-      login,
-      register,
-      logout,
-      loginWithGoogle,
-      getAccessToken,
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

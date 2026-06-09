@@ -1,12 +1,12 @@
-import { useState, useCallback, useEffect } from 'react'
+import { create } from 'zustand'
+import { useEffect } from 'react'
 import * as cartService from '../../../services/cartApi'
 
 /**
- * useCart — manages all cart state and actions
- * Syncs with Django session-based cart backend
+ * useCartStore — global Zustand store to manage cart state across components.
  */
-export function useCart() {
-  const [cart, setCart] = useState({
+export const useCartStore = create((set, get) => ({
+  cart: {
     items: [],
     item_count: 0,
     total_qty: 0,
@@ -14,100 +14,168 @@ export function useCart() {
     shipping_method: 'normal',
     shipping_cost: 20000,
     total: 0,
-  })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [actionLoading, setActionLoading] = useState(false)
+  },
+  loading: false,
+  error: null,
+  actionLoading: false,
+  hasFetched: false,
 
-  const handleResponse = (data) => {
-    setCart({
-      items: data.items ?? [],
-      item_count: data.item_count ?? 0,
-      total_qty: data.total_qty ?? 0,
-      subtotal: data.subtotal ?? 0,
-      shipping_method: data.shipping_method ?? 'normal',
-      shipping_cost: data.shipping_cost ?? 20000,
-      total: data.total ?? 0,
-    })
-  }
-
-  const fetchCart = useCallback(async () => {
+  fetchCart: async () => {
+    set({ loading: true, error: null })
     try {
-      setLoading(true)
-      setError(null)
       const res = await cartService.getCart()
-      handleResponse(res.data)
+      const data = res.data
+      set({
+        cart: {
+          items: data.items ?? [],
+          item_count: data.item_count ?? 0,
+          total_qty: data.total_qty ?? 0,
+          subtotal: data.subtotal ?? 0,
+          shipping_method: data.shipping_method ?? 'normal',
+          shipping_cost: data.shipping_cost ?? 20000,
+          total: data.total ?? 0,
+        },
+        hasFetched: true,
+      })
     } catch (err) {
       console.error('Cart fetch error:', err)
-      setError('Không thể tải giỏ hàng. Vui lòng thử lại.')
+      set({ error: 'Không thể tải giỏ hàng. Vui lòng thử lại.' })
     } finally {
-      setLoading(false)
+      set({ loading: false })
     }
-  }, [])
+  },
 
-  useEffect(() => {
-    fetchCart()
-  }, [fetchCart])
-
-  const addItem = useCallback(async (productId, quantity = 1) => {
-    setActionLoading(true)
+  addItem: async (productId, quantity = 1, variantId = null) => {
+    set({ actionLoading: true })
     try {
-      const res = await cartService.addToCart(productId, quantity)
-      handleResponse(res.data)
-      return { success: true, message: res.data.message }
+      const res = await cartService.addToCart(productId, quantity, variantId)
+      const data = res.data
+      set({
+        cart: {
+          items: data.items ?? [],
+          item_count: data.item_count ?? 0,
+          total_qty: data.total_qty ?? 0,
+          subtotal: data.subtotal ?? 0,
+          shipping_method: data.shipping_method ?? 'normal',
+          shipping_cost: data.shipping_cost ?? 20000,
+          total: data.total ?? 0,
+        },
+      })
+      return { success: true, message: data.message }
     } catch (err) {
       const msg = err.response?.data?.error || 'Không thể thêm sản phẩm'
       return { success: false, message: msg }
     } finally {
-      setActionLoading(false)
+      set({ actionLoading: false })
     }
-  }, [])
+  },
 
-  const updateItem = useCallback(async (productId, quantity) => {
-    setActionLoading(true)
+  updateItem: async (productId, quantity, variantId = null) => {
+    set({ actionLoading: true })
     try {
-      const res = await cartService.updateCartItem(productId, quantity)
-      handleResponse(res.data)
+      const res = await cartService.updateCartItem(productId, quantity, variantId)
+      const data = res.data
+      set({
+        cart: {
+          items: data.items ?? [],
+          item_count: data.item_count ?? 0,
+          total_qty: data.total_qty ?? 0,
+          subtotal: data.subtotal ?? 0,
+          shipping_method: data.shipping_method ?? 'normal',
+          shipping_cost: data.shipping_cost ?? 20000,
+          total: data.total ?? 0,
+        },
+      })
     } catch (err) {
       console.error('Update cart error:', err)
     } finally {
-      setActionLoading(false)
+      set({ actionLoading: false })
     }
-  }, [])
+  },
 
-  const removeItem = useCallback(async (productId) => {
-    setActionLoading(true)
+  removeItem: async (productId, variantId = null) => {
+    set({ actionLoading: true })
     try {
-      const res = await cartService.deleteCartItem(productId)
-      handleResponse(res.data)
+      const res = await cartService.deleteCartItem(productId, variantId)
+      const data = res.data
+      set({
+        cart: {
+          items: data.items ?? [],
+          item_count: data.item_count ?? 0,
+          total_qty: data.total_qty ?? 0,
+          subtotal: data.subtotal ?? 0,
+          shipping_method: data.shipping_method ?? 'normal',
+          shipping_cost: data.shipping_cost ?? 20000,
+          total: data.total ?? 0,
+        },
+      })
     } catch (err) {
       console.error('Delete cart error:', err)
     } finally {
-      setActionLoading(false)
+      set({ actionLoading: false })
     }
-  }, [])
+  },
 
-  const changeShipping = useCallback(async (method) => {
-    setActionLoading(true)
+  changeShipping: async (method) => {
+    set({ actionLoading: true })
     try {
       const res = await cartService.updateShipping(method)
-      handleResponse(res.data)
+      const data = res.data
+      set({
+        cart: {
+          items: data.items ?? [],
+          item_count: data.item_count ?? 0,
+          total_qty: data.total_qty ?? 0,
+          subtotal: data.subtotal ?? 0,
+          shipping_method: data.shipping_method ?? 'normal',
+          shipping_cost: data.shipping_cost ?? 20000,
+          total: data.total ?? 0,
+        },
+      })
     } catch (err) {
       console.error('Shipping update error:', err)
     } finally {
-      setActionLoading(false)
+      set({ actionLoading: false })
     }
-  }, [])
+  },
 
-  return {
-    cart,
-    loading,
-    error,
-    actionLoading,
-    fetchCart,
-    addItem,
-    updateItem,
-    removeItem,
-    changeShipping,
-  }
+  mergeGuestCart: async (guestCart = {}) => {
+    set({ actionLoading: true })
+    try {
+      const res = await cartService.mergeCart(guestCart)
+      const data = res.data
+      set({
+        cart: {
+          items: data.items ?? [],
+          item_count: data.item_count ?? 0,
+          total_qty: data.total_qty ?? 0,
+          subtotal: data.subtotal ?? 0,
+          shipping_method: data.shipping_method ?? 'normal',
+          shipping_cost: data.shipping_cost ?? 20000,
+          total: data.total ?? 0,
+        },
+      })
+      return { success: true, message: data.message }
+    } catch (err) {
+      console.error('Merge cart error:', err)
+      return { success: false }
+    } finally {
+      set({ actionLoading: false })
+    }
+  },
+}))
+
+/**
+ * useCart Hook - backwards-compatible wrapper around useCartStore.
+ */
+export function useCart() {
+  const store = useCartStore()
+
+  useEffect(() => {
+    if (!store.hasFetched && !store.loading) {
+      store.fetchCart()
+    }
+  }, [store.hasFetched, store.loading, store.fetchCart])
+
+  return store
 }

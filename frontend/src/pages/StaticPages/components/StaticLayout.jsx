@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { ChevronRight, Info, Shield, Truck, RefreshCcw, Lock, HelpCircle, CreditCard, Phone, Mail, MessageSquare } from 'lucide-react'
- 
+import { ChevronRight, Info, Shield, Truck, RefreshCcw, Lock, HelpCircle, CreditCard, Phone, Mail, MessageSquare, Zap } from 'lucide-react'
+
 const MENU = [
   { path: '/guide', label: 'Hướng dẫn mua hàng', icon: HelpCircle },
   { path: '/payment-guide', label: 'Hướng dẫn thanh toán', icon: CreditCard },
@@ -9,10 +9,10 @@ const MENU = [
   { path: '/warranty-policy', label: 'Chính sách bảo hành', icon: Shield },
   { path: '/faqs', label: 'Câu hỏi thường gặp', icon: HelpCircle },
 ]
- 
+
 export default function StaticLayout({ title, children }) {
   const { pathname } = useLocation()
- 
+
   return (
     <div className="mx-4.5 py-6 pb-16">
       {/* Breadcrumb */}
@@ -21,7 +21,7 @@ export default function StaticLayout({ title, children }) {
         <ChevronRight size={13} className="text-slate-300" />
         <span className="text-blue-600 font-semibold">{title}</span>
       </nav>
- 
+
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">
         {/* Sidebar */}
         <div className="space-y-6 lg:sticky lg:top-24">
@@ -45,7 +45,10 @@ export default function StaticLayout({ title, children }) {
           {/* Need help box */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
             <h4 className="font-black text-slate-900 text-sm uppercase tracking-tight">Cần hỗ trợ thêm?</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">Đội ngũ TechZone luôn sẵn sàng hỗ trợ bạn 24/7 ⚡</p>
+            <p className="text-xs text-slate-500 leading-relaxed flex items-center gap-1">
+              Đội ngũ TechZone luôn sẵn sàng hỗ trợ bạn 24/7
+              <Zap size={13} className="text-amber-500 fill-amber-500 shrink-0" />
+            </p>
             
             <div className="space-y-3.5">
               <div className="flex items-start gap-3">

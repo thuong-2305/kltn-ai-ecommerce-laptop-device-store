@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useProductFilters } from '../../features/product/hooks/useProductFilters'
 import FilterSidebar from '../../features/product/components/FilterSidebar'
 import ProductGrid from '../../features/product/components/ProductGrid'
@@ -7,140 +7,216 @@ import SortOptions from '../../features/product/components/SortOptions'
 import Pagination from '../../features/product/components/Pagination'
 import ProductListLoadingState from '../../features/product/components/ProductListLoadingState'
 import ProductListErrorState from '../../features/product/components/ProductListErrorState'
-import { Filter } from 'lucide-react'
-import { addToCart } from '../../services/cartApi'
+import { Filter, X } from 'lucide-react'
+import { useCart } from '../../features/cart/hooks/useCart'
 import { useWishlistStore } from '../../hooks/useWishlistStore'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import api from '../../services/api'
+import { formatPrice } from '../../shared/utils/formatters'
+import { toast } from '../../shared/utils/toast'
+
+
+// Module-level cache for metadata to prevent redundant API fetches on remount
+let cachedCategories = null
+let cachedBrands = null
 
 /**
- * ProductListPage - Modern product listing page
- * Features: Filtering, sorting, pagination, responsive layout
+ * ProductListPage - Optimized product listing page
  */
 function ProductListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [categories, setCategories] = useState(cachedCategories || [])
+  const [brands, setBrands] = useState(cachedBrands || [])
+  const [filterSidebarOpen, setFilterSidebarOpen] = useState(false)
+  const toggleWishlist = useWishlistStore(state => state.toggleWishlist)
+  const { addItem } = useCart()
 
-  // Get filters from custom hook
+  // Fetch metadata once per application lifetime (or use cache)
+  useEffect(() => {
+    if (cachedCategories && cachedBrands) return
+
+    const fetchMetadata = async () => {
+      try {
+        const [categoriesRes, brandsRes] = await Promise.all([
+          api.get('/categories/'),
+          api.get('/brands/')
+        ])
+        cachedCategories = categoriesRes.data.results || []
+        cachedBrands = brandsRes.data.results || []
+        setCategories(cachedCategories)
+        setBrands(cachedBrands)
+      } catch (err) {
+        console.error('Error fetching categories or brands:', err)
+      }
+    }
+    fetchMetadata()
+  }, [])
+
   const {
     products,
     filters,
     pagination,
     loading,
     error,
-    updateFilter,
     updateFilters,
     goToPage,
     resetFilters,
     refetch,
   } = useProductFilters()
 
-  // Mobile filter sidebar state
-  const [filterSidebarOpen, setFilterSidebarOpen] = useState(false)
-  const toggleWishlist = useWishlistStore(state => state.toggleWishlist)
+  // Parse URL search parameters into a memoized object
+  const parsedFiltersFromUrl = useMemo(() => {
+    return {
+      search: searchParams.get('q') || '',
+      category: searchParams.get('category') ? (isNaN(searchParams.get('category')) ? searchParams.get('category') : parseInt(searchParams.get('category'))) : null,
+      brand: searchParams.get('brand') ? (isNaN(searchParams.get('brand')) ? searchParams.get('brand') : parseInt(searchParams.get('brand'))) : null,
+      cpu: searchParams.get('cpu') || null,
+      ram: searchParams.get('ram') || null,
+      storage: searchParams.get('storage') || null,
+      screen: searchParams.get('screen') || null,
+      os: searchParams.get('os') || null,
+      minPrice: parseInt(searchParams.get('min_price')) || 0,
+      maxPrice: parseInt(searchParams.get('max_price')) || 100000000,
+      sortBy: searchParams.get('sort') || 'newest',
+      page: parseInt(searchParams.get('page')) || 1,
+    }
+  }, [searchParams])
 
-  // Mock categories
-  const [categories, setCategories] = useState([
-    { id: 1, name: 'Gaming Laptop' },
-    { id: 2, name: 'Laptop Văn Phòng' },
-    { id: 3, name: 'Laptop Thiết Kế' },
-    { id: 4, name: 'Laptop Ultrabook' },
-    { id: 5, name: 'Laptop 2-in-1' },
-  ])
+  // Sync state from URL to the filters hook
+  useEffect(() => {
+    updateFilters(parsedFiltersFromUrl)
+  }, [parsedFiltersFromUrl, updateFilters])
 
-  const activeCategoryName = filters.category 
-    ? categories.find(c => String(c.id) === String(filters.category))?.name || 'Sản phẩm'
-    : 'Tất cả sản phẩm'
+  const activeCategoryName = useMemo(() => {
+    if (!filters.category) return 'Tất cả sản phẩm'
+    return categories.find(c => String(c.id) === String(filters.category))?.name || 'Sản phẩm'
+  }, [filters.category, categories])
 
   useDocumentTitle(
     activeCategoryName,
-    `Khám phá danh sách ${activeCategoryName} chất lượng cao, cấu hình mạnh mẽ, chính hãng, giá cạnh tranh nhất thị trường tại LAPTOP DEVICE STORE.`
+    `Khám phá danh sách ${activeCategoryName} chất lượng cao, cấu hình mạnh mẽ, chính hãng, giá cạnh tranh tại LAPTOP DEVICE STORE.`
   )
 
-  // Sync URL params with filters
-  useEffect(() => {
-    const search = searchParams.get('q')
-    const category = searchParams.get('category')
-    const minPrice = searchParams.get('min_price')
-    const maxPrice = searchParams.get('max_price')
-    const sort = searchParams.get('sort')
-
-    const newFilters = {}
-    if (search !== null) newFilters.search = search
-    if (category !== null) newFilters.category = category
-    if (minPrice !== null) newFilters.minPrice = minPrice
-    if (maxPrice !== null) newFilters.maxPrice = maxPrice
-    if (sort !== null) newFilters.sort = sort
-
-    updateFilters(newFilters)
-  }, [searchParams])
-
-  // Update URL params when filters change
-  const handleFilterChange = (filterKey, value) => {
-    updateFilter(filterKey, value)
-
+  // Navigate by updating URL params (hook will automatically sync on state update)
+  const handleFilterChange = useCallback((filterKey, value) => {
     const newParams = new URLSearchParams(searchParams)
-    if (value) {
-      newParams.set(filterKey === 'search' ? 'q' : filterKey, value)
+    let urlKey = filterKey
+    if (filterKey === 'search') urlKey = 'q'
+    if (filterKey === 'minPrice') urlKey = 'min_price'
+    if (filterKey === 'maxPrice') urlKey = 'max_price'
+
+    // Reset page back to 1 on filter edits
+    newParams.delete('page')
+
+    if (value !== null && value !== undefined && value !== '') {
+      newParams.set(urlKey, value)
     } else {
-      newParams.delete(filterKey === 'search' ? 'q' : filterKey)
+      newParams.delete(urlKey)
     }
     setSearchParams(newParams)
-  }
+  }, [searchParams, setSearchParams])
 
-  const handleSortChange = (sortBy) => {
-    updateFilter('sortBy', sortBy)
-
+  const handleSortChange = useCallback((sortBy) => {
     const newParams = new URLSearchParams(searchParams)
     newParams.set('sort', sortBy)
+    newParams.delete('page')
     setSearchParams(newParams)
-  }
+  }, [searchParams, setSearchParams])
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     resetFilters()
     setSearchParams({})
-  }
+  }, [resetFilters, setSearchParams])
 
-  const handleAddToCart = async (product) => {
-    try {
-      await addToCart(product.id, 1)
-      alert(`Đã thêm "${product.name}" vào giỏ hàng!`)
-    } catch {
-      alert('Không thể thêm sản phẩm vào giỏ hàng.')
+  const handleClearFilter = useCallback((key) => {
+    if (key === 'price') {
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('min_price')
+      newParams.delete('max_price')
+      newParams.delete('page')
+      setSearchParams(newParams)
+    } else {
+      handleFilterChange(key, null)
     }
-  }
+  }, [searchParams, handleFilterChange, setSearchParams])
 
-  const handleAddToWishlist = async (product) => {
+  const handleAddToCart = useCallback(async (product) => {
+    const res = await addItem(product.id, 1)
+    if (res.success) {
+      toast.success(res.message || `Đã thêm "${product.name}" vào giỏ hàng!`)
+    } else {
+      toast.error(res.message || 'Không thể thêm sản phẩm vào giỏ hàng.')
+    }
+  }, [addItem])
+
+  const handleAddToWishlist = useCallback(async (product) => {
     try {
       const res = await toggleWishlist(product)
-      alert(res.message)
+      toast.success(res.message)
     } catch {
-      alert('Thao tác danh sách yêu thích thất bại.')
+      toast.error('Thao tác danh sách yêu thích thất bại.')
     }
-  }
+  }, [toggleWishlist])
 
-  const handleQuickView = (product) => {
+  const handleQuickView = useCallback((product) => {
     // TODO: Implement quick view modal
-  }
+  }, [])
 
-  const handleCompare = (product) => {
+  const handleCompare = useCallback((product) => {
     // TODO: Implement compare functionality
-  }
+  }, [])
+
+  // Memoize active filters list to prevent structural re-evaluation on renders
+  const activeFiltersList = useMemo(() => {
+    const list = []
+    if (filters.category) {
+      const cat = categories.find(c => String(c.id) === String(filters.category))
+      if (cat) list.push({ key: 'category', label: `Danh mục: ${cat.name}` })
+    }
+    if (filters.brand) {
+      const brnd = brands.find(b => String(b.id) === String(filters.brand))
+      if (brnd) list.push({ key: 'brand', label: `Thương hiệu: ${brnd.name}` })
+    }
+    if (filters.search) {
+      list.push({ key: 'search', label: `Tìm kiếm: "${filters.search}"` })
+    }
+    if (filters.minPrice > 0 || (filters.maxPrice < 100000000 && filters.maxPrice > 0)) {
+      list.push({ 
+        key: 'price', 
+        label: `Giá: ${formatPrice(filters.minPrice)} - ${formatPrice(filters.maxPrice)}` 
+      })
+    }
+    if (filters.cpu) list.push({ key: 'cpu', label: `CPU: ${filters.cpu}` })
+    if (filters.ram) list.push({ key: 'ram', label: `RAM: ${filters.ram}` })
+    if (filters.storage) list.push({ key: 'storage', label: `Ổ cứng: ${filters.storage}` })
+    if (filters.screen) list.push({ key: 'screen', label: `Màn hình: ${filters.screen}` })
+    if (filters.os) list.push({ key: 'os', label: `HĐH: ${filters.os}` })
+    return list
+  }, [filters, categories, brands])
+
+  const handlePageChange = useCallback((page) => {
+    const newParams = new URLSearchParams(searchParams)
+    newParams.set('page', page)
+    setSearchParams(newParams)
+    goToPage(page)
+  }, [searchParams, goToPage, setSearchParams])
 
   return (
     <div className="mx-4.5 py-6 pb-16">
       {/* Breadcrumb */}
       <nav className="mb-5 flex items-center gap-2 text-sm">
-        <a href="/" className="text-slate-500 hover:text-blue-600 transition-colors font-medium">Trang chủ</a>
+        <Link to="/" className="text-slate-500 hover:text-blue-600 transition-colors font-medium">Trang chủ</Link>
         <span className="text-slate-300">/</span>
-        <a href="#" className="text-slate-500 hover:text-blue-600 transition-colors font-medium">Sản phẩm</a>
+        <span className="text-slate-500 font-medium">Sản phẩm</span>
         <span className="text-slate-300">/</span>
-        <span className="text-slate-900 font-semibold">{filters.category ? categories.find(c => c.id === filters.category)?.name || 'Danh mục' : 'Tất cả'}</span>
+        <span className="text-slate-900 font-semibold">{activeCategoryName}</span>
       </nav>
 
       {/* Page Header */}
       <div className="mb-5 flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-slate-200/80 pb-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 uppercase tracking-tight">
-            {filters.category ? categories.find(c => c.id === filters.category)?.name || 'Sản phẩm' : 'Tất cả sản phẩm'}
+            {activeCategoryName}
           </h1>
           <p className="text-slate-500 text-sm">
             Hiển thị {!loading ? `${products.length} trong ${pagination.total}` : '...'} kết quả
@@ -161,6 +237,36 @@ function ProductListPage() {
         </div>
       </div>
 
+      {/* Active Filters Chip Bar */}
+      {activeFiltersList.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6 bg-slate-50/50 p-3 rounded-xl border border-slate-100/80 animate-in fade-in duration-200">
+          <span className="text-xs font-bold text-slate-500 mr-1.5 uppercase tracking-wider">Đang lọc:</span>
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            {activeFiltersList.map((item) => (
+              <span
+                key={item.key}
+                className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-700 shadow-sm"
+              >
+                {item.label}
+                <button
+                  onClick={() => handleClearFilter(item.key)}
+                  className="text-slate-400 hover:text-slate-650 hover:bg-slate-100 rounded-full p-0.5 transition-colors focus:outline-none"
+                  aria-label={`Xóa bộ lọc ${item.label}`}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <button
+            onClick={handleReset}
+            className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-auto pl-2 py-1"
+          >
+            Xóa tất cả bộ lọc
+          </button>
+        </div>
+      )}
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]">
         {/* Sticky Sidebar */}
@@ -168,6 +274,7 @@ function ProductListPage() {
           <div className="sticky top-24">
             <FilterSidebar
               categories={categories}
+              brands={brands}
               filters={filters}
               onFilterChange={handleFilterChange}
               onReset={handleReset}
@@ -179,7 +286,7 @@ function ProductListPage() {
         <div className="space-y-6">
           {loading && <ProductListLoadingState />}
           {error && <ProductListErrorState error={error} onRetry={refetch} />}
-          {!loading && !error && products.length === 0 && <EmptyState />}
+          {!loading && !error && products.length === 0 && <EmptyState onReset={handleReset} />}
           {!loading && !error && products.length > 0 && (
             <>
               <ProductGrid
@@ -195,7 +302,7 @@ function ProductListPage() {
                   <Pagination
                     current={pagination.page}
                     total={pagination.totalPages}
-                    onPageChange={goToPage}
+                    onPageChange={handlePageChange}
                     isLoading={loading}
                   />
                 </div>
@@ -210,6 +317,7 @@ function ProductListPage() {
         isOpen={filterSidebarOpen}
         onClose={() => setFilterSidebarOpen(false)}
         categories={categories}
+        brands={brands}
         filters={filters}
         onFilterChange={handleFilterChange}
         onReset={handleReset}
@@ -218,29 +326,24 @@ function ProductListPage() {
   )
 }
 
-/**
- * MobileFilterDrawer - Mobile filter drawer component
- */
-function MobileFilterDrawer({ isOpen, onClose, categories, filters, onFilterChange, onReset }) {
+function MobileFilterDrawer({ isOpen, onClose, categories, brands, filters, onFilterChange, onReset }) {
   return (
     <>
-      {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
-
-      {/* Drawer */}
       <div
-        className={`fixed left-0 top-0 z-40 h-screen w-72 bg-white shadow-xl transition-transform duration-300 md:hidden ${
+        className={`fixed left-0 top-0 z-50 h-screen w-72 bg-white shadow-xl transition-transform duration-300 md:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <FilterSidebar
           categories={categories}
+          brands={brands}
           filters={filters}
           onFilterChange={onFilterChange}
           onReset={onReset}
@@ -252,10 +355,7 @@ function MobileFilterDrawer({ isOpen, onClose, categories, filters, onFilterChan
   )
 }
 
-/**
- * EmptyState - Empty products state component
- */
-function EmptyState() {
+function EmptyState({ onReset }) {
   return (
     <div className="py-16 text-center">
       <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-slate-100 mb-4">
@@ -264,8 +364,11 @@ function EmptyState() {
         </svg>
       </div>
       <h3 className="text-lg font-semibold text-slate-900 mb-2">Không tìm thấy sản phẩm</h3>
-      <p className="text-slate-600 mb-6">Thử thay đổi bộ lọc hoặc tìm kiếm khác</p>
-      <button className="inline-flex items-center gap-2 px-6 h-10 rounded-lg bg-blue-600 text-white font-semibold transition-all hover:bg-blue-700">
+      <p className="text-slate-650 mb-6">Thử thay đổi bộ lọc hoặc tìm kiếm khác</p>
+      <button 
+        onClick={onReset}
+        className="inline-flex items-center gap-2 px-6 h-10 rounded-lg bg-blue-600 text-white font-semibold transition-all hover:bg-blue-750 active:scale-95"
+      >
         Xem tất cả sản phẩm
       </button>
     </div>

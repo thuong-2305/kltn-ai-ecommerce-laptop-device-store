@@ -2,8 +2,10 @@
 asgiref==3.8.1
 Django==5.1.2
 django-cors-headers==4.9.0
+django-jazzmin==3.0.1
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
+whitenoise==6.7.0
 
 # Database
 mysqlclient==2.2.8
@@ -14,6 +16,7 @@ pillow==11.0.0
 # Configuration & Security
 python-decouple==3.8
 PyJWT==2.12.1
+google-auth==2.29.0
 
 # HTTP & Networking
 certifi==2024.8.30
@@ -37,6 +40,10 @@ faiss-cpu==1.8.0
 
 # Task Queue
 celery==5.4.0
+
+# Real-time WebSockets
+daphne==4.1.2
+channels==4.1.0
 
 # Dependencies (automatically installed by libraries)
 packaging==24.1

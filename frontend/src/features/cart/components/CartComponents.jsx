@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Package, Zap, ChevronRight, Tag } from 'lucide-react'
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Package, Zap, ChevronRight, Tag, Lock, Truck, Shield } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const fmt = (n) =>
@@ -15,12 +15,12 @@ export function CartItemRow({ item, onUpdate, onRemove, disabled }) {
   const changeQty = (newQty) => {
     if (newQty < 1) return
     setLocalQty(newQty)
-    onUpdate(item.product_id, newQty)
+    onUpdate(item.product_id, newQty, item.variant_id)
   }
 
   const handleRemove = async () => {
     setRemoving(true)
-    await onRemove(item.product_id)
+    await onRemove(item.product_id, item.variant_id)
   }
 
   return (
@@ -196,13 +196,13 @@ export function OrderSummary({ cart, actionLoading }) {
       {/* Trust badges */}
       <div className="px-6 pb-6 grid grid-cols-2 gap-2">
         {[
-          { icon: '🔒', label: 'Thanh toán an toàn' },
-          { icon: '🚚', label: 'Miễn phí đổi trả 30 ngày' },
-          { icon: '🛡️', label: 'Bảo hành chính hãng' },
-          { icon: '📦', label: 'Giao hàng toàn quốc' },
+          { icon: <Lock size={14} className="text-blue-600 shrink-0" />, label: 'Thanh toán an toàn' },
+          { icon: <Truck size={14} className="text-blue-600 shrink-0" />, label: 'Miễn phí đổi trả 30 ngày' },
+          { icon: <Shield size={14} className="text-blue-600 shrink-0" />, label: 'Bảo hành chính hãng' },
+          { icon: <Package size={14} className="text-blue-600 shrink-0" />, label: 'Giao hàng toàn quốc' },
         ].map(({ icon, label }) => (
           <div key={label} className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
-            <span>{icon}</span>
+            {icon}
             <span>{label}</span>
           </div>
         ))}

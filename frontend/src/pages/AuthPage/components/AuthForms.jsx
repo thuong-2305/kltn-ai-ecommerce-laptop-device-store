@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, ChevronRight, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -52,6 +52,43 @@ export function LoginForm({ onSwitchToRegister, onSuccess }) {
   const [globalError, setGlobalError] = useState('')
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId) return
+
+    const initGsi = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: async (response) => {
+            setSubmitting(true)
+            setGlobalError('')
+            try {
+              await loginWithGoogle(response.credential)
+              onSuccess?.()
+            } catch (err) {
+              setGlobalError(err.response?.data?.error || 'Đăng nhập Google thất bại, vui lòng thử lại')
+            } finally {
+              setSubmitting(false)
+            }
+          }
+        })
+      }
+    }
+
+    if (window.google?.accounts?.id) {
+      initGsi()
+    } else {
+      const interval = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          initGsi()
+          clearInterval(interval)
+        }
+      }, 500)
+      return () => clearInterval(interval)
+    }
+  }, [loginWithGoogle, onSuccess])
 
   const validate = () => {
     const e = {}
@@ -177,16 +214,53 @@ export function LoginForm({ onSwitchToRegister, onSuccess }) {
 
 /* ─── RegisterForm ────────────────────────────────────────────── */
 export function RegisterForm({ onSwitchToLogin, onSuccess }) {
-  const { register } = useAuth()
+  const { register, sendOTP } = useAuth()
   const [form, setForm] = useState({
-    first_name: '', last_name: '', username: '', email: '', password: '', confirm: '',
+    first_name: '', last_name: '', username: '', email: '', password: '', confirm: '', otp: '',
   })
   const [showPw, setShowPw] = useState(false)
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [globalError, setGlobalError] = useState('')
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [otpCountdown, setOtpCountdown] = useState(0)
+  const [otpSuccessMessage, setOtpSuccessMessage] = useState('')
+
+  useEffect(() => {
+    if (otpCountdown <= 0) return
+    const timer = setInterval(() => {
+      setOtpCountdown(c => c - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [otpCountdown])
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const handleSendOTP = async () => {
+    setErrors(e => ({ ...e, email: '', otp: '' }))
+    setOtpSuccessMessage('')
+    setGlobalError('')
+    if (!form.email.trim()) {
+      setErrors(e => ({ ...e, email: 'Vui lòng nhập email để gửi mã OTP' }))
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setErrors(e => ({ ...e, email: 'Email không hợp lệ' }))
+      return
+    }
+
+    setSendingOtp(true)
+    try {
+      const res = await sendOTP(form.email)
+      let msg = res.message || 'Mã OTP đã được gửi đến email của bạn.'
+      setOtpSuccessMessage(msg)
+      setOtpCountdown(60)
+    } catch (err) {
+      setGlobalError(err.response?.data?.error || 'Không thể gửi mã OTP, vui lòng thử lại sau.')
+    } finally {
+      setSendingOtp(false)
+    }
+  }
 
   const validate = () => {
     const e = {}
@@ -196,6 +270,7 @@ export function RegisterForm({ onSwitchToLogin, onSuccess }) {
     else if (!/^[a-zA-Z0-9_]+$/.test(form.username)) e.username = 'Chỉ được dùng chữ, số và dấu _'
     if (!form.email.trim()) e.email = 'Vui lòng nhập email'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email không hợp lệ'
+    if (!form.otp || form.otp.length !== 6) e.otp = 'Vui lòng nhập mã OTP 6 số'
     if (!form.password) e.password = 'Vui lòng nhập mật khẩu'
     else if (form.password.length < 8) e.password = 'Mật khẩu phải có ít nhất 8 ký tự'
     if (form.password !== form.confirm) e.confirm = 'Mật khẩu xác nhận không khớp'
@@ -216,6 +291,7 @@ export function RegisterForm({ onSwitchToLogin, onSuccess }) {
         password: form.password,
         first_name: form.first_name,
         last_name: form.last_name,
+        otp: form.otp,
       })
       onSuccess?.()
     } catch (err) {
@@ -248,7 +324,33 @@ export function RegisterForm({ onSwitchToLogin, onSuccess }) {
       </Field>
 
       <Field label="Email" icon={Mail} error={errors.email}>
-        <input type="email" placeholder="email@example.com" className={inputCls(true)} value={form.email} onChange={set('email')} autoComplete="email" />
+        <input type="email" placeholder="email@example.com" className={`${inputCls(true)} pr-24`} value={form.email} onChange={set('email')} autoComplete="email" />
+        <button
+          type="button"
+          onClick={handleSendOTP}
+          disabled={sendingOtp || otpCountdown > 0}
+          className="absolute right-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed z-10"
+        >
+          {otpCountdown > 0 ? `${otpCountdown}s` : sendingOtp ? 'Đang gửi...' : 'Gửi mã'}
+        </button>
+      </Field>
+
+      {otpSuccessMessage && (
+        <div className="text-xs text-green-600 font-semibold -mt-2 flex items-center gap-1.5 px-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          {otpSuccessMessage}
+        </div>
+      )}
+
+      <Field label="Mã xác thực OTP" icon={Lock} error={errors.otp}>
+        <input
+          type="text"
+          placeholder="Nhập mã OTP 6 số"
+          className={inputCls(true)}
+          value={form.otp}
+          onChange={set('otp')}
+          maxLength={6}
+        />
       </Field>
 
       <Field label="Mật khẩu" icon={Lock} error={errors.password}>

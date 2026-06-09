@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, ShoppingCart, Share2, GitCompare, ChevronLeft, ChevronRight, Star, CheckCircle, Truck, RotateCcw, Shield, Edit3 } from 'lucide-react'
+import { Heart, ShoppingCart, Share2, GitCompare, ChevronLeft, ChevronRight, Star, CheckCircle, Truck, RotateCcw, Shield, Edit3, Smile, Frown, Meh } from 'lucide-react'
 import { formatPrice } from '../../../shared/utils/formatters'
 
 /* ─────────────────────────────────────────────────────────────────
@@ -89,10 +89,19 @@ export function StarRating({ rating = 0, size = 16, showValue = false }) {
 export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
   const [qty, setQty] = useState(1)
   const [wishlisted, setWishlisted] = useState(false)
+  const [activeVariant, setActiveVariant] = useState(() => {
+    return product.variants && product.variants.length > 0 ? product.variants[0] : null
+  })
 
-  const salePrice = product.sale_price ?? product.price
-  const originalPrice = product.price
-  const hasDiscount = product.discount_percentage > 0
+  // Dynamic price based on selected variant or product base price
+  const salePrice = activeVariant ? activeVariant.price : (product.sale_price ?? product.price)
+  const originalPrice = activeVariant ? activeVariant.price : product.price
+  const discountPercentage = activeVariant ? 0 : (product.discount_percentage || 0)
+  const hasDiscount = !activeVariant && discountPercentage > 0
+
+  const handleCartClick = () => {
+    onAddToCart?.(product, qty, activeVariant)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,37 +129,79 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
         {hasDiscount && (
           <div className="flex flex-col items-start">
             <span className="text-base text-slate-400 line-through">{formatPrice(originalPrice)}</span>
-            <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">-{product.discount_percentage}%</span>
+            <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">-{discountPercentage}%</span>
           </div>
         )}
       </div>
+
+      {/* Variant Selector */}
+      {product.variants && product.variants.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Cấu hình:</span>
+          <div className="flex flex-wrap gap-2.5">
+            {product.variants.map((v) => {
+              const isActive = activeVariant?.id === v.id
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => setActiveVariant(v)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    isActive
+                      ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-350'
+                  }`}
+                >
+                  {v.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Short description */}
       {product.short_description && (
         <p className="text-sm text-slate-600 leading-relaxed">{product.short_description}</p>
       )}
 
-      {/* Quantity */}
-      <div className="flex items-center gap-4">
-        <span className="text-sm font-semibold text-slate-700">Số lượng:</span>
-        <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
-          <button
-            onClick={() => setQty((q) => Math.max(1, q - 1))}
-            className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 transition-colors font-semibold text-lg"
-          >−</button>
-          <span className="w-12 text-center text-sm font-bold text-slate-900">{qty}</span>
-          <button
-            onClick={() => setQty((q) => q + 1)}
-            className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 transition-colors font-semibold text-lg"
-          >+</button>
+      {/* Quantity & Stock Status */}
+      <div className="flex items-center gap-6 flex-wrap">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-semibold text-slate-700">Số lượng:</span>
+          <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 transition-colors font-semibold text-lg"
+            >−</button>
+            <span className="w-12 text-center text-sm font-bold text-slate-900">{qty}</span>
+            <button
+              onClick={() => setQty((q) => q + 1)}
+              className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 transition-colors font-semibold text-lg"
+            >+</button>
+          </div>
         </div>
+
+        {activeVariant && (
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+            activeVariant.stock > 0 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {activeVariant.stock > 0 ? `Còn hàng (${activeVariant.stock})` : 'Hết hàng'}
+          </span>
+        )}
       </div>
 
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
         <button
-          onClick={() => onAddToCart?.(product, qty)}
-          className="flex-1 h-12 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all hover:bg-blue-700 active:scale-95 shadow-md hover:shadow-lg"
+          onClick={handleCartClick}
+          disabled={activeVariant && activeVariant.stock <= 0}
+          className={`flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md hover:shadow-lg ${
+            activeVariant && activeVariant.stock <= 0
+              ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
         >
           <ShoppingCart size={18} />
           Thêm vào giỏ hàng
@@ -192,7 +243,10 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
 /* ─────────────────────────────────────────────────────────────────
    SPECS TAB (config)
 ───────────────────────────────────────────────────────────────── */
-export function ProductSpecs({ config = [], description = '' }) {
+export function ProductSpecs({ config = [], specifications = [], description = '' }) {
+  const hasSpecs = specifications && specifications.length > 0
+  const hasConfig = config && config.length > 0
+
   return (
     <div className="space-y-6">
       {description && (
@@ -202,7 +256,31 @@ export function ProductSpecs({ config = [], description = '' }) {
         </div>
       )}
 
-      {config.length > 0 && (
+      {/* Render structured specifications if they exist */}
+      {hasSpecs && (
+        <div>
+          <h3 className="text-base font-bold text-slate-900 mb-4">Thông số kỹ thuật chi tiết</h3>
+          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+            <table className="w-full text-sm">
+              <tbody>
+                {specifications.map((spec, idx) => (
+                  <tr key={spec.id || idx} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3 px-5 font-semibold text-slate-705 w-1/3 align-top bg-slate-50/30">
+                      {spec.key}
+                    </td>
+                    <td className="py-3 px-5 text-slate-600 align-top">
+                      {spec.value}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Fallback to legacy parsed config if structured specs are empty */}
+      {!hasSpecs && hasConfig && (
         <div>
           <h3 className="text-base font-bold text-slate-900 mb-4">Thông số kỹ thuật</h3>
           <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -251,7 +329,26 @@ function RatingBar({ label, count, total }) {
 
 export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 0, ratingDistribution = {}, productId }) {
   const SENTIMENT_COLORS = { positive: 'text-green-600 bg-green-50 border-green-200', negative: 'text-red-600 bg-red-50 border-red-200', neutral: 'text-slate-600 bg-slate-50 border-slate-200' }
-  const SENTIMENT_LABEL  = { positive: '😊 Tích cực', negative: '😞 Tiêu cực', neutral: '😐 Trung lập' }
+  const SENTIMENT_LABEL  = {
+    positive: (
+      <span className="flex items-center gap-1">
+        <Smile size={11} className="shrink-0" />
+        <span>Tích cực</span>
+      </span>
+    ),
+    negative: (
+      <span className="flex items-center gap-1">
+        <Frown size={11} className="shrink-0" />
+        <span>Tiêu cực</span>
+      </span>
+    ),
+    neutral: (
+      <span className="flex items-center gap-1">
+        <Meh size={11} className="shrink-0" />
+        <span>Trung lập</span>
+      </span>
+    )
+  }
 
   return (
     <div className="space-y-8">

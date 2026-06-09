@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertCircle, ChevronRight, ChevronLeft, Check, Truck, CreditCard, MapPin, User, Phone, Mail, Tag, Shield, Package, RefreshCw, Headphones } from 'lucide-react'
+import { AlertCircle, ChevronRight, ChevronLeft, Check, Truck, CreditCard, MapPin, User, Phone, Mail, Tag, Shield, Package, RefreshCw, Headphones, Banknote, Landmark, Smartphone } from 'lucide-react'
 import { useCart } from '../../features/cart/hooks/useCart'
 import axios from 'axios'
 
@@ -19,12 +19,19 @@ const DISTRICTS = { 'TP. Hồ Chí Minh': ['Quận 1', 'Quận 3', 'Quận 7', '
 const WARDS = ['Phường 1', 'Phường 2', 'Phường 3', 'Phường Bến Nghé', 'Phường Bến Thành']
 
 const PAYMENT_METHODS = [
-  { id: 'cod',   label: 'Thanh toán khi nhận hàng (COD)', sub: 'Thanh toán bằng tiền mặt khi nhận hàng', icon: '💵' },
-  { id: 'bank',  label: 'Chuyển khoản ngân hàng', sub: 'Thanh toán bằng chuyển khoản qua ngân hàng', icon: '🏦' },
-  { id: 'atm',   label: 'Thẻ ATM / Internet Banking', sub: 'Thanh toán qua Napas', icon: '💳' },
-  { id: 'card',  label: 'Thẻ tín dụng / Thẻ ghi nợ', sub: 'Visa, MasterCard, JCB, Amex', icon: '💳' },
-  { id: 'ewallet', label: 'Ví điện tử', sub: 'ZaloPay, VNPay, ShopeePay', icon: '📱' },
+  { id: 'cod',   label: 'Thanh toán khi nhận hàng (COD)', sub: 'Thanh toán bằng tiền mặt khi nhận hàng', icon: <Banknote size={20} className="text-blue-650 shrink-0" /> },
+  { id: 'bank',  label: 'Chuyển khoản ngân hàng', sub: 'Thanh toán bằng chuyển khoản qua ngân hàng', icon: <Landmark size={20} className="text-blue-650 shrink-0" /> },
+  { id: 'atm',   label: 'Thẻ ATM / Internet Banking', sub: 'Thanh toán qua Napas', icon: <CreditCard size={20} className="text-blue-650 shrink-0" /> },
+  { id: 'card',  label: 'Thẻ tín dụng / Thẻ ghi nợ', sub: 'Visa, MasterCard, JCB, Amex', icon: <CreditCard size={20} className="text-blue-650 shrink-0" /> },
+  { id: 'ewallet', label: 'Ví điện tử', sub: 'ZaloPay, VNPay, ShopeePay', icon: <Smartphone size={20} className="text-blue-650 shrink-0" /> },
 ]
+
+const TYPE_LABELS = {
+  home: 'Nhà riêng',
+  work: 'Công ty',
+  relative: 'Nhà người thân',
+  other: 'Khác'
+}
 
 /* ─── Step indicator ─────────────────────────────────────────── */
 function StepBar({ current }) {
@@ -192,7 +199,7 @@ const inputCls = (hasIcon) => `w-full h-11 bg-transparent text-sm text-slate-900
 /* ─── CheckoutPage ───────────────────────────────────────────── */
 function CheckoutPage() {
   const navigate = useNavigate()
-  const { cart, loading } = useCart()
+  const { cart, loading, fetchCart } = useCart()
 
   const [step] = useState(2)
   const [promo, setPromo] = useState('')
@@ -202,13 +209,236 @@ function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
+  const [userAddresses, setUserAddresses] = useState([])
+  const [selectedAddressId, setSelectedAddressId] = useState(null)
+
   const [form, setForm] = useState({
     full_name: '', phone: '', email: '',
-    address: '', province: 'TP. Hồ Chí Minh', district: 'Quận 1', ward: 'Phường Bến Nghé',
+    address: '', province: 'Thành phố Hồ Chí Minh', ward: 'Phường Bến Nghé',
     shipping: 'standard', note: '',
   })
 
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+  const set = k => e => {
+    const val = e.target.value
+    setForm(f => {
+      const newForm = { ...f, [k]: val }
+      const matched = userAddresses.find(addr => 
+        addr.name === newForm.full_name &&
+        addr.phone === newForm.phone &&
+        addr.street === newForm.address &&
+        addr.city === newForm.province &&
+        addr.ward === newForm.ward
+      )
+      setSelectedAddressId(matched ? matched.id : null)
+      return newForm
+    })
+  }
+
+  const [provincesList, setProvincesList] = useState([])
+  const [wardList, setWardList] = useState([])
+
+  useEffect(() => {
+    const fetchAddressData = async () => {
+      try {
+        // 1. Tải danh sách đơn vị hành chính
+        const res = await axios.get('http://localhost:8000/api/payment/get-data/')
+        setProvincesList(res.data)
+        
+        const defaultProv = res.data.find(p => p.Name === 'Thành phố Hồ Chí Minh') || res.data[0]
+        let defaultWardName = 'Phường Bến Nghé'
+        if (defaultProv) {
+          const allWards = []
+          for (const d of defaultProv.Districts) {
+            allWards.push(...d.Wards)
+          }
+          const defaultWard = allWards.find(w => w.Name === 'Phường Bến Nghé') || allWards[0]
+          defaultWardName = defaultWard ? defaultWard.Name : ''
+          setWardList(allWards)
+        }
+
+        // 2. Tải địa chỉ giao hàng của user nếu đã đăng nhập
+        const token = localStorage.getItem('ld_access')
+        if (token) {
+          try {
+            // Tải danh sách địa chỉ trước
+            const addrListRes = await axios.get('http://localhost:8000/api/payment/addresses/', {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            const addresses = addrListRes.data
+            setUserAddresses(addresses)
+
+            // Tải thông tin shipping address để lấy email
+            let legacyEmail = ''
+            let legacyFullName = ''
+            let legacyPhone = ''
+            let legacyAddress = ''
+            try {
+              const shippingRes = await axios.get('http://localhost:8000/api/payment/shipping-address/', {
+                headers: { Authorization: `Bearer ${token}` }
+              })
+              legacyEmail = shippingRes.data.email || ''
+              legacyFullName = shippingRes.data.full_name || ''
+              legacyPhone = shippingRes.data.phone || ''
+              legacyAddress = shippingRes.data.address || ''
+            } catch (err) {
+              console.error('Error fetching shipping address fallback:', err)
+            }
+
+            if (addresses && addresses.length > 0) {
+              // Tìm địa chỉ mặc định hoặc phần tử đầu tiên
+              const defaultAddr = addresses.find(a => a.isDefault) || addresses[0]
+              setSelectedAddressId(defaultAddr.id)
+
+              let savedProvince = defaultAddr.city || (defaultProv ? defaultProv.Name : '')
+              let savedWard = defaultAddr.ward || defaultWardName
+
+              setForm(f => ({
+                ...f,
+                full_name: defaultAddr.name || legacyFullName || '',
+                phone: defaultAddr.phone || legacyPhone || '',
+                email: legacyEmail || f.email || '',
+                address: defaultAddr.street || '',
+                province: savedProvince,
+                ward: savedWard
+              }))
+
+              // Cập nhật danh sách phường tương ứng với tỉnh thành đã chọn
+              if (savedProvince) {
+                const matchedProv = res.data.find(p => p.Name === savedProvince)
+                if (matchedProv) {
+                  const matchedWards = []
+                  for (const d of matchedProv.Districts) {
+                    matchedWards.push(...d.Wards)
+                  }
+                  setWardList(matchedWards)
+                }
+              }
+            } else {
+              // Nếu không có địa chỉ trong address book, dùng fallback từ shipping-address
+              let specificAddress = legacyAddress
+              let savedProvince = defaultProv ? defaultProv.Name : ''
+              let savedWard = defaultWardName
+
+              if (legacyAddress && legacyAddress.includes(',')) {
+                const parts = legacyAddress.split(', ')
+                if (parts.length >= 3) {
+                  specificAddress = parts.slice(0, parts.length - 2).join(', ').trim()
+                  savedWard = parts[parts.length - 2].trim()
+                  savedProvince = parts[parts.length - 1].trim()
+                }
+              }
+
+              setForm(f => ({
+                ...f,
+                full_name: legacyFullName || '',
+                phone: legacyPhone || '',
+                email: legacyEmail || '',
+                address: specificAddress,
+                province: savedProvince,
+                ward: savedWard
+              }))
+
+              if (savedProvince) {
+                const matchedProv = res.data.find(p => p.Name === savedProvince)
+                if (matchedProv) {
+                  const matchedWards = []
+                  for (const d of matchedProv.Districts) {
+                    matchedWards.push(...d.Wards)
+                  }
+                  setWardList(matchedWards)
+                }
+              }
+            }
+          } catch (addrErr) {
+            console.error('Error fetching addresses:', addrErr)
+            setForm(f => ({
+              ...f,
+              province: defaultProv ? defaultProv.Name : '',
+              ward: defaultWardName
+            }))
+          }
+        } else {
+          setForm(f => ({
+            ...f,
+            province: defaultProv ? defaultProv.Name : '',
+            ward: defaultWardName
+          }))
+        }
+      } catch (err) {
+        console.error('Error fetching address data:', err)
+      }
+    }
+    fetchAddressData()
+  }, [])
+
+  const handleProvinceChange = (e) => {
+    const provName = e.target.value
+    const prov = provincesList.find(p => p.Name === provName)
+    const allWards = []
+    if (prov) {
+      for (const d of prov.Districts) {
+        allWards.push(...d.Wards)
+      }
+    }
+    const defaultWard = allWards[0]
+    const defaultWardName = defaultWard ? defaultWard.Name : ''
+
+    setForm(f => {
+      const newForm = {
+        ...f,
+        province: provName,
+        ward: defaultWardName
+      }
+      const matched = userAddresses.find(addr => 
+        addr.name === newForm.full_name &&
+        addr.phone === newForm.phone &&
+        addr.street === newForm.address &&
+        addr.city === newForm.province &&
+        addr.ward === newForm.ward
+      )
+      setSelectedAddressId(matched ? matched.id : null)
+      return newForm
+    })
+    setWardList(allWards)
+  }
+
+  const handleWardChange = (e) => {
+    const val = e.target.value
+    setForm(f => {
+      const newForm = { ...f, ward: val }
+      const matched = userAddresses.find(addr => 
+        addr.name === newForm.full_name &&
+        addr.phone === newForm.phone &&
+        addr.street === newForm.address &&
+        addr.city === newForm.province &&
+        addr.ward === newForm.ward
+      )
+      setSelectedAddressId(matched ? matched.id : null)
+      return newForm
+    })
+  }
+
+  const handleSelectAddress = (addr) => {
+    setSelectedAddressId(addr.id)
+    
+    const matchedProv = provincesList.find(p => p.Name === addr.city)
+    const matchedWards = []
+    if (matchedProv) {
+      for (const d of matchedProv.Districts) {
+        matchedWards.push(...d.Wards)
+      }
+    }
+    setWardList(matchedWards)
+    
+    setForm(f => ({
+      ...f,
+      full_name: addr.name || '',
+      phone: addr.phone || '',
+      address: addr.street || '',
+      province: addr.city || '',
+      ward: addr.ward || ''
+    }))
+  }
 
   const validate = () => {
     const e = {}
@@ -242,16 +472,37 @@ function CheckoutPage() {
       const payload = {
         shipping_full_name: form.full_name.trim(),
         shipping_phone: form.phone.trim(),
-        shipping_address: `${form.address.trim()}, ${form.ward}, ${form.district}, ${form.province}`,
+        shipping_address: `${form.address.trim()}, ${form.ward}, ${form.province}`,
         payment_method: payment,
       }
       
-      const res = await axios.post('http://localhost:8000/api/payment/checkout-rest/', payload, {
+      const res = await axios.post('http://localhost:8000/api/payment/orders/create/', payload, {
         headers,
         withCredentials: true
       })
       
       const orderId = res.data.order_id
+      const orderCode = res.data.order_code
+      
+      try {
+        await fetchCart()
+      } catch (err) {
+        console.error('Failed to refresh cart after order creation:', err)
+      }
+      
+      if (payment === 'ewallet') {
+        const vnpRes = await axios.post('http://localhost:8000/api/payment/vnpay_checkout/', {
+          order_code: orderCode
+        }, {
+          headers,
+          withCredentials: true
+        })
+        if (vnpRes.data && vnpRes.data.payment_url) {
+          window.location.href = vnpRes.data.payment_url
+          return
+        }
+      }
+
       navigate(`/order-success/${orderId}`, {
         state: { form, payment, cart: { ...cart }, discount, orderId }
       })
@@ -301,6 +552,62 @@ function CheckoutPage() {
           {/* 1. Shipping info */}
           <Section num="1" title="Thông tin giao hàng">
             <div className="space-y-4">
+              {/* Sổ địa chỉ selector */}
+              {userAddresses.length > 0 && (
+                <div className="mb-6 bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin size={14} className="text-blue-600" /> Chọn nhanh từ Sổ địa chỉ
+                    </span>
+                    <Link
+                      to="/profile"
+                      state={{ activeTab: 'address' }}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      Quản lý địa chỉ
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {userAddresses.map((addr) => {
+                      const isSelected = selectedAddressId === addr.id
+                      return (
+                        <div
+                          key={addr.id}
+                          onClick={() => handleSelectAddress(addr)}
+                          className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between select-none ${
+                            isSelected
+                              ? 'border-blue-500 bg-white shadow-[0_4px_12px_rgba(59,130,246,0.08)] ring-2 ring-blue-500/10'
+                              : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-slate-800 text-xs truncate max-w-[120px]">{addr.name}</span>
+                              <span className="bg-slate-100 border border-slate-200 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded leading-none">
+                                {TYPE_LABELS[addr.type] || 'Khác'}
+                              </span>
+                              {addr.isDefault && (
+                                <span className="bg-blue-600 text-white text-[8px] font-black px-1 rounded uppercase tracking-wider scale-90 origin-left">
+                                  Mặc định
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-semibold">{addr.phone}</p>
+                            <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                              {addr.street}, {addr.ward}, {addr.city}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                              <Check size={10} strokeWidth={3} />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Họ và tên" required icon={User} error={errors.full_name}>
                   <input type="text" placeholder="Nguyễn Văn A" className={inputCls(true)} value={form.full_name} onChange={set('full_name')} />
@@ -315,18 +622,25 @@ function CheckoutPage() {
               <Field label="Địa chỉ nhận hàng" required icon={MapPin} error={errors.address}>
                 <input type="text" placeholder="123 Đường ABC, Phường 1" className={inputCls(true)} value={form.address} onChange={set('address')} />
               </Field>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { k: 'province', label: 'Tỉnh / Thành phố', opts: PROVINCES },
-                  { k: 'district', label: 'Quận / Huyện', opts: DISTRICTS[form.province] || DISTRICTS.default },
-                  { k: 'ward',     label: 'Phường / Xã',   opts: WARDS },
-                ].map(({ k, label, opts }) => (
-                  <Field key={k} label={label} required>
-                    <select className={inputCls(false) + ' cursor-pointer'} value={form[k]} onChange={set(k)}>
-                      {opts.map(o => <option key={o}>{o}</option>)}
-                    </select>
-                  </Field>
-                ))}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Tỉnh / Thành phố" required error={errors.province}>
+                  <select className={inputCls(false) + ' cursor-pointer'} value={form.province} onChange={handleProvinceChange}>
+                    {provincesList.length > 0 ? (
+                      provincesList.map(p => <option key={p.Id} value={p.Name}>{p.Name}</option>)
+                    ) : (
+                      <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                    )}
+                  </select>
+                </Field>
+                <Field label="Phường / Xã" required error={errors.ward}>
+                  <select className={inputCls(false) + ' cursor-pointer'} value={form.ward} onChange={handleWardChange}>
+                    {wardList.length > 0 ? (
+                      wardList.map(w => <option key={w.Id} value={w.Name}>{w.Name}</option>)
+                    ) : (
+                      <option value="Phường Bến Nghé">Phường Bến Nghé</option>
+                    )}
+                  </select>
+                </Field>
               </div>
 
               {/* Shipping method */}
@@ -367,7 +681,7 @@ function CheckoutPage() {
               {PAYMENT_METHODS.map(pm => (
                 <label key={pm.id} className={`flex items-center gap-4 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all ${payment === pm.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
                   <input type="radio" name="payment" value={pm.id} checked={payment === pm.id} onChange={() => setPayment(pm.id)} className="accent-blue-600 shrink-0" />
-                  <span className="text-lg shrink-0">{pm.icon}</span>
+                  {pm.icon}
                   <div className="flex-1">
                     <p className="text-sm font-bold text-slate-800">{pm.label}</p>
                     <p className="text-xs text-slate-500">{pm.sub}</p>

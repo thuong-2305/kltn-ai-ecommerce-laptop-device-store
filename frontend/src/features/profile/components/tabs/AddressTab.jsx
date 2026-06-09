@@ -1,52 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { MapPin, Plus, X, Info } from 'lucide-react'
-
-const DEFAULT_ADDRESSES = [
-  {
-    id: 1,
-    name: 'Nguyễn Văn A',
-    phone: '0901234567',
-    street: '123 Đường ABC',
-    ward: 'Phường 1',
-    district: 'Quận 1',
-    city: 'TP. Hồ Chí Minh',
-    type: 'home', // home, work, relative, other
-    isDefault: true
-  },
-  {
-    id: 2,
-    name: 'Nguyễn Văn A',
-    phone: '0901234567',
-    street: '456 Đường DEF',
-    ward: 'Phường 3',
-    district: 'Quận 3',
-    city: 'TP. Hồ Chí Minh',
-    type: 'work',
-    isDefault: false
-  },
-  {
-    id: 3,
-    name: 'Nguyễn Văn A',
-    phone: '0901234567',
-    street: '789 Đường GHI',
-    ward: 'Phường 7',
-    district: 'Quận 7',
-    city: 'TP. Hồ Chí Minh',
-    type: 'relative',
-    isDefault: false
-  },
-  {
-    id: 4,
-    name: 'Nguyễn Văn A',
-    phone: '0901234567',
-    street: '12/34 Đường JKL',
-    ward: 'Phường 12',
-    district: 'Quận 10',
-    city: 'TP. Hồ Chí Minh',
-    type: 'other',
-    isDefault: false
-  }
-]
+import axios from 'axios'
 
 const TYPE_LABELS = {
   home: 'Nhà riêng',
@@ -56,27 +10,38 @@ const TYPE_LABELS = {
 }
 
 export function AddressTab({ profile }) {
-  const username = profile?.username || 'guest'
-  const storageKey = `ld_addresses_${username}`
+  const [addresses, setAddresses] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const [addresses, setAddresses] = useState(() => {
+  const fetchAddresses = useCallback(async () => {
+    setLoading(true)
     try {
-      const saved = localStorage.getItem(storageKey)
-      return saved ? JSON.parse(saved) : DEFAULT_ADDRESSES
-    } catch {
-      return DEFAULT_ADDRESSES
+      const token = localStorage.getItem('ld_access')
+      if (!token) return
+      const res = await axios.get('http://localhost:8000/api/payment/addresses/', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setAddresses(res.data)
+    } catch (err) {
+      console.error('Error fetching user addresses:', err)
+    } finally {
+      setLoading(false)
     }
-  })
+  }, [])
+
+  useEffect(() => {
+    fetchAddresses()
+  }, [fetchAddresses])
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingAddress, setEditingAddress] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   const [form, setForm] = useState({
     name: '',
     phone: '',
     street: '',
     ward: '',
-    district: '',
     city: '',
     type: 'home',
     isDefault: false
@@ -84,31 +49,78 @@ export function AddressTab({ profile }) {
   
   const [errors, setErrors] = useState({})
 
-  const saveToStorage = (newAddresses) => {
-    setAddresses(newAddresses)
-    localStorage.setItem(storageKey, JSON.stringify(newAddresses))
+  const [provincesList, setProvincesList] = useState([])
+  const [wardList, setWardList] = useState([])
+
+  useEffect(() => {
+    const fetchAddressData = async () => {
+      try {
+        const res = await axios.get('http://localhost:8000/api/payment/get-data/')
+        setProvincesList(res.data)
+      } catch (err) {
+        console.error('Error fetching address data:', err)
+      }
+    }
+    fetchAddressData()
+  }, [])
+
+  const handleProvinceChange = (e) => {
+    const provName = e.target.value
+    const prov = provincesList.find(p => p.Name === provName)
+    const allWards = []
+    if (prov) {
+      for (const d of prov.Districts) {
+        allWards.push(...d.Wards)
+      }
+    }
+    const defaultWard = allWards[0]
+
+    setForm(f => ({
+      ...f,
+      city: provName,
+      ward: defaultWard ? defaultWard.Name : ''
+    }))
+    setWardList(allWards)
   }
 
-  const handleSetDefault = (id) => {
-    const updated = addresses.map(addr => ({
-      ...addr,
-      isDefault: addr.id === id
-    }))
-    saveToStorage(updated)
+  const handleWardChange = (e) => {
+    setForm(f => ({ ...f, ward: e.target.value }))
+  }
+
+  const handleSetDefault = async (id) => {
+    try {
+      const token = localStorage.getItem('ld_access')
+      await axios.post(`http://localhost:8000/api/payment/addresses/${id}/set-default/`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      await fetchAddresses()
+    } catch (err) {
+      console.error('Error setting default address:', err)
+    }
   }
 
   const handleOpenAdd = () => {
     setEditingAddress(null)
+    
+    const defaultProv = provincesList.find(p => p.Name === 'Thành phố Hồ Chí Minh') || provincesList[0]
+    const allWards = []
+    if (defaultProv) {
+      for (const d of defaultProv.Districts) {
+        allWards.push(...d.Wards)
+      }
+    }
+    const defaultWard = allWards.find(w => w.Name === 'Phường Bến Nghé') || allWards[0]
+
     setForm({
-      name: profile?.full_name || '',
-      phone: profile?.phone || '',
+      name: profile?.user?.full_name || profile?.user?.username || '',
+      phone: profile?.phone || profile?.user?.phone || '',
       street: '',
-      ward: '',
-      district: '',
-      city: '',
+      city: defaultProv ? defaultProv.Name : '',
+      ward: defaultWard ? defaultWard.Name : '',
       type: 'home',
       isDefault: addresses.length === 0
     })
+    setWardList(allWards)
     setErrors({})
     setIsModalOpen(true)
   }
@@ -120,16 +132,25 @@ export function AddressTab({ profile }) {
       phone: addr.phone,
       street: addr.street,
       ward: addr.ward,
-      district: addr.district,
       city: addr.city,
       type: addr.type,
       isDefault: addr.isDefault
     })
+    
+    const prov = provincesList.find(p => p.Name === addr.city)
+    const allWards = []
+    if (prov) {
+      for (const d of prov.Districts) {
+        allWards.push(...d.Wards)
+      }
+    }
+    
+    setWardList(allWards)
     setErrors({})
     setIsModalOpen(true)
   }
 
-  const handleDelete = (id, e) => {
+  const handleDelete = async (id, e) => {
     e.stopPropagation()
     const target = addresses.find(a => a.id === id)
     if (target?.isDefault) {
@@ -137,8 +158,15 @@ export function AddressTab({ profile }) {
       return
     }
     if (window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) {
-      const filtered = addresses.filter(addr => addr.id !== id)
-      saveToStorage(filtered)
+      try {
+        const token = localStorage.getItem('ld_access')
+        await axios.delete(`http://localhost:8000/api/payment/addresses/${id}/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        await fetchAddresses()
+      } catch (err) {
+        console.error('Error deleting address:', err)
+      }
     }
   }
 
@@ -149,65 +177,50 @@ export function AddressTab({ profile }) {
     else if (!/^[0-9+\s\-()]{9,15}$/.test(form.phone)) errs.phone = 'Số điện thoại không hợp lệ'
     if (!form.street.trim()) errs.street = 'Địa chỉ chi tiết không được để trống'
     if (!form.ward.trim()) errs.ward = 'Phường/Xã không được để trống'
-    if (!form.district.trim()) errs.district = 'Quận/Huyện không được để trống'
     if (!form.city.trim()) errs.city = 'Tỉnh/Thành phố không được để trống'
     return errs
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    if (isSubmitting) return
     const errs = validate()
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       return
     }
 
-    let updatedList = []
-    if (editingAddress) {
-      // Edit mode
-      updatedList = addresses.map(addr => {
-        if (addr.id === editingAddress.id) {
-          return {
-            ...addr,
-            name: form.name.trim(),
-            phone: form.phone.trim(),
-            street: form.street.trim(),
-            ward: form.ward.trim(),
-            district: form.district.trim(),
-            city: form.city.trim(),
-            type: form.type,
-            isDefault: form.isDefault
-          }
-        }
-        return addr
-      })
-    } else {
-      // Add mode
-      const newAddress = {
-        id: Date.now(),
+    setIsSubmitting(true)
+    try {
+      const token = localStorage.getItem('ld_access')
+      const payload = {
         name: form.name.trim(),
         phone: form.phone.trim(),
         street: form.street.trim(),
         ward: form.ward.trim(),
-        district: form.district.trim(),
         city: form.city.trim(),
         type: form.type,
         isDefault: form.isDefault
       }
-      updatedList = [...addresses, newAddress]
-    }
 
-    // If this address is set to default, unset all others
-    if (form.isDefault) {
-      const defaultId = editingAddress ? editingAddress.id : updatedList[updatedList.length - 1].id
-      updatedList = updatedList.map(addr => ({
-        ...addr,
-        isDefault: addr.id === defaultId
-      }))
-    }
+      if (editingAddress) {
+        await axios.patch(`http://localhost:8000/api/payment/addresses/${editingAddress.id}/`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      } else {
+        await axios.post('http://localhost:8000/api/payment/addresses/', payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      }
 
-    saveToStorage(updatedList)
-    setIsModalOpen(false)
+      await fetchAddresses()
+      setIsModalOpen(false)
+    } catch (err) {
+      console.error('Error saving address:', err)
+      alert(err.response?.data?.error || 'Có lỗi xảy ra khi lưu địa chỉ.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -228,76 +241,88 @@ export function AddressTab({ profile }) {
 
       {/* Addresses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {addresses.map((addr) => (
-          <div
-            key={addr.id}
-            onClick={() => handleSetDefault(addr.id)}
-            className={`relative bg-white rounded-2xl border p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-all cursor-pointer min-h-[220px] ${
-              addr.isDefault ? 'border-blue-500 ring-2 ring-blue-500/10' : 'border-slate-200'
-            }`}
-          >
-            {/* Top Info */}
-            <div className="flex gap-3 items-start">
-              {/* Custom Radio Button */}
-              <div className="pt-0.5 shrink-0">
-                {addr.isDefault ? (
-                  <div className="w-[18px] h-[18px] rounded-full border-2 border-blue-600 flex items-center justify-center">
-                    <div className="w-[9px] h-[9px] bg-blue-600 rounded-full" />
-                  </div>
-                ) : (
-                  <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300 hover:border-slate-400 transition-colors" />
-                )}
-              </div>
-
-              {/* Text content */}
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-slate-800 text-sm truncate">{addr.name}</span>
-                  {addr.isDefault && (
-                    <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider scale-95 shrink-0">
-                      Mặc định
-                    </span>
+        {loading ? (
+          <div className="flex items-center justify-center py-20 w-full col-span-full text-slate-400">
+            Đang tải danh sách địa chỉ...
+          </div>
+        ) : addresses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 w-full col-span-full text-slate-400">
+            <MapPin size={32} className="text-slate-300 mb-2" />
+            <p className="font-semibold text-slate-500">Chưa có địa chỉ nào trong sổ địa chỉ.</p>
+            <p className="text-xs">Vui lòng nhấp "Thêm địa chỉ mới" để cấu hình.</p>
+          </div>
+        ) : (
+          addresses.map((addr) => (
+            <div
+              key={addr.id}
+              onClick={() => handleSetDefault(addr.id)}
+              className={`relative bg-white rounded-2xl border p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-all cursor-pointer min-h-[220px] ${
+                addr.isDefault ? 'border-blue-500 ring-2 ring-blue-500/10' : 'border-slate-200'
+              }`}
+            >
+              {/* Top Info */}
+              <div className="flex gap-3 items-start">
+                {/* Custom Radio Button */}
+                <div className="pt-0.5 shrink-0">
+                  {addr.isDefault ? (
+                    <div className="w-[18px] h-[18px] rounded-full border-2 border-blue-600 flex items-center justify-center">
+                      <div className="w-[9px] h-[9px] bg-blue-600 rounded-full" />
+                    </div>
+                  ) : (
+                    <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300 hover:border-slate-400 transition-colors" />
                   )}
                 </div>
 
-                <p className="text-xs text-slate-500 font-semibold">{addr.phone}</p>
-                <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  {addr.street}, {addr.ward}, {addr.district}, {addr.city}
-                </p>
+                {/* Text content */}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-black text-slate-800 text-sm truncate">{addr.name}</span>
+                    {addr.isDefault && (
+                      <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider scale-95 shrink-0">
+                        Mặc định
+                      </span>
+                    )}
+                  </div>
 
-                <div className="pt-1">
-                  <span className="inline-block bg-slate-100 border border-slate-200/50 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                    {TYPE_LABELS[addr.type] || 'Khác'}
-                  </span>
+                  <p className="text-xs text-slate-500 font-semibold">{addr.phone}</p>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    {addr.street}, {addr.ward}, {addr.city}
+                  </p>
+
+                  <div className="pt-1">
+                    <span className="inline-block bg-slate-100 border border-slate-200/50 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                      {TYPE_LABELS[addr.type] || 'Khác'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Actions Footer */}
-            <div className="flex gap-3 mt-5 pt-3.5 border-t border-slate-100">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleOpenEdit(addr)
-                }}
-                className="flex-1 py-1.5 text-center text-xs font-bold text-blue-600 border border-blue-100 bg-blue-50/10 hover:bg-blue-50/50 rounded-xl transition-all"
-              >
-                Chỉnh sửa
-              </button>
-              <button
-                onClick={(e) => handleDelete(addr.id, e)}
-                className={`flex-1 py-1.5 text-center text-xs font-bold rounded-xl transition-all border ${
-                  addr.isDefault
-                    ? 'text-slate-300 border-slate-100 bg-slate-50/50 cursor-not-allowed'
-                    : 'text-red-600 border-red-100 bg-red-50/10 hover:bg-red-50/50'
-                }`}
-                disabled={addr.isDefault}
-              >
-                Xóa
-              </button>
+              {/* Actions Footer */}
+              <div className="flex gap-3 mt-5 pt-3.5 border-t border-slate-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenEdit(addr)
+                  }}
+                  className="flex-1 py-1.5 text-center text-xs font-bold text-blue-600 border border-blue-100 bg-blue-50/10 hover:bg-blue-50/50 rounded-xl transition-all"
+                >
+                  Chỉnh sửa
+                </button>
+                <button
+                  onClick={(e) => handleDelete(addr.id, e)}
+                  className={`flex-1 py-1.5 text-center text-xs font-bold rounded-xl transition-all border ${
+                    addr.isDefault
+                      ? 'text-slate-300 border-slate-100 bg-slate-50/50 cursor-not-allowed'
+                      : 'text-red-600 border-red-100 bg-red-50/10 hover:bg-red-50/50'
+                  }`}
+                  disabled={addr.isDefault}
+                >
+                  Xóa
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
 
         {/* Dashed Add Card */}
         <div
@@ -392,47 +417,41 @@ export function AddressTab({ profile }) {
                   </div>
                 </div>
 
-                {/* Tỉnh thành, Quận huyện, Phường xã */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Tỉnh thành, Phường xã */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Tỉnh / Thành phố *</label>
-                    <input
-                      type="text"
-                      className={`h-11 px-4 border rounded-xl text-sm outline-none bg-slate-50/30 ${
+                    <select
+                      className={`h-11 px-3 border rounded-xl text-sm outline-none bg-slate-50/30 cursor-pointer ${
                         errors.city ? 'border-red-400 focus:ring-2 focus:ring-red-100' : 'border-slate-200 focus:border-blue-500'
                       }`}
-                      placeholder="TP. Hồ Chí Minh"
                       value={form.city}
-                      onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    />
+                      onChange={handleProvinceChange}
+                    >
+                      {provincesList.length > 0 ? (
+                        provincesList.map(p => <option key={p.Id} value={p.Name}>{p.Name}</option>)
+                      ) : (
+                        <option value={form.city}>{form.city || 'Chọn tỉnh thành'}</option>
+                      )}
+                    </select>
                     {errors.city && <p className="text-[11px] text-red-600 font-semibold">{errors.city}</p>}
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Quận / Huyện *</label>
-                    <input
-                      type="text"
-                      className={`h-11 px-4 border rounded-xl text-sm outline-none bg-slate-50/30 ${
-                        errors.district ? 'border-red-400 focus:ring-2 focus:ring-red-100' : 'border-slate-200 focus:border-blue-500'
-                      }`}
-                      placeholder="Quận 1"
-                      value={form.district}
-                      onChange={(e) => setForm({ ...form, district: e.target.value })}
-                    />
-                    {errors.district && <p className="text-[11px] text-red-600 font-semibold">{errors.district}</p>}
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Phường / Xã *</label>
-                    <input
-                      type="text"
-                      className={`h-11 px-4 border rounded-xl text-sm outline-none bg-slate-50/30 ${
+                    <select
+                      className={`h-11 px-3 border rounded-xl text-sm outline-none bg-slate-50/30 cursor-pointer ${
                         errors.ward ? 'border-red-400 focus:ring-2 focus:ring-red-100' : 'border-slate-200 focus:border-blue-500'
                       }`}
-                      placeholder="Phường Bến Nghé"
                       value={form.ward}
-                      onChange={(e) => setForm({ ...form, ward: e.target.value })}
-                    />
+                      onChange={handleWardChange}
+                    >
+                      {wardList.length > 0 ? (
+                        wardList.map(w => <option key={w.Id} value={w.Name}>{w.Name}</option>)
+                      ) : (
+                        <option value={form.ward}>{form.ward || 'Chọn phường xã'}</option>
+                      )}
+                    </select>
                     {errors.ward && <p className="text-[11px] text-red-600 font-semibold">{errors.ward}</p>}
                   </div>
                 </div>
@@ -497,15 +516,21 @@ export function AddressTab({ profile }) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 h-10 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all"
+                  disabled={isSubmitting}
+                  className="px-5 h-10 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-6 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs font-bold transition-all shadow-md hover:shadow-lg"
+                  disabled={isSubmitting}
+                  className={`px-6 h-10 rounded-xl text-white text-xs font-bold transition-all shadow-md ${
+                    isSubmitting
+                      ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                      : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:shadow-lg hover:-translate-y-0.5'
+                  }`}
                 >
-                  {editingAddress ? 'Cập nhật' : 'Lưu địa chỉ'}
+                  {isSubmitting ? 'Đang lưu...' : (editingAddress ? 'Cập nhật' : 'Lưu địa chỉ')}
                 </button>
               </div>
             </form>

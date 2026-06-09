@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Lock, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react'
+import { Lock, Eye, EyeOff, Loader2, ShieldCheck, Lightbulb } from 'lucide-react'
 import { SectionTitle, Toast, Field, inputCls } from './shared'
 
 export function SecurityTab({ onChangePassword }) {
@@ -99,7 +99,10 @@ export function SecurityTab({ onChangePassword }) {
       <PwField label="Xác nhận mật khẩu mới *" fieldKey="confirm_password" placeholder="Nhập lại mật khẩu mới" />
 
       <div className="rounded-xl bg-blue-50 border border-blue-200/80 p-4 text-xs text-blue-700 space-y-1">
-        <p className="font-bold mb-2">💡 Gợi ý mật khẩu mạnh:</p>
+        <p className="font-bold mb-2 flex items-center gap-1.5">
+          <Lightbulb size={14} className="text-amber-500 fill-amber-300 shrink-0" />
+          Gợi ý mật khẩu mạnh:
+        </p>
         <p>• Ít nhất 8 ký tự</p>
         <p>• Kết hợp chữ hoa, chữ thường, số</p>
         <p>• Thêm ký tự đặc biệt (!@#$%...)</p>

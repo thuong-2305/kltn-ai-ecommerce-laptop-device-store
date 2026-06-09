@@ -2,11 +2,13 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, ShoppingCart, Trash2, ChevronRight, Star } from 'lucide-react'
 import { useWishlistStore } from '../../hooks/useWishlistStore'
-import { addToCart } from '../../services/cartApi'
 import { formatPrice } from '../../shared/utils/formatters'
+import { toast } from '../../shared/utils/toast'
+import { useCart } from '../../features/cart/hooks/useCart'
 
 export default function WishlistPage() {
-  const { wishlist, loading, error, fetchWishlist, removeItem, clearWishlist } = useWishlistStore()
+  const { wishlist, loading, error, fetchWishlist, removeItem, clearWishlist, moveToCart } = useWishlistStore()
+  const { fetchCart } = useCart()
 
   useEffect(() => {
     fetchWishlist()
@@ -23,12 +25,12 @@ export default function WishlistPage() {
   }
 
   const handleAddToCart = async (product) => {
-    try {
-      await addToCart(product.id, 1)
-      alert('Đã thêm sản phẩm vào giỏ hàng!')
-    } catch (err) {
-      console.error(err)
-      alert('Không thể thêm sản phẩm vào giỏ hàng.')
+    const result = await moveToCart(product.id)
+    if (result.success) {
+      fetchCart()
+      toast.success(result.message || 'Đã thêm sản phẩm vào giỏ hàng!')
+    } else {
+      toast.error(result.message || 'Không thể thêm sản phẩm vào giỏ hàng.')
     }
   }
 

@@ -9,10 +9,18 @@ export function useProductFilters() {
   // Filter states
   const [filters, setFilters] = useState({
     category: null,
+    brand: null,
     search: '',
+    ids: null,
     minPrice: 0,
     maxPrice: 100000000,
-    sortBy: 'newest', // newest, price-asc, price-desc, rating
+    cpu: null,
+    ram: null,
+    storage: null,
+    screen: null,
+    os: null,
+    availability: null,
+    sortBy: 'newest', // newest, price-asc, price-desc, rating, popular
   })
 
   // Pagination states
@@ -38,7 +46,14 @@ export function useProductFilters() {
 
       const params = {}
       if (filters.category) params.category = filters.category
+      if (filters.brand) params.brand = filters.brand
       if (filters.search) params.search = filters.search
+      if (filters.ids) params.ids = filters.ids
+      if (filters.cpu) params.cpu = filters.cpu
+      if (filters.ram) params.ram = filters.ram
+      if (filters.storage) params.storage = filters.storage
+      if (filters.screen) params.screen = filters.screen
+      if (filters.os) params.os = filters.os
       params.min_price = filters.minPrice
       params.max_price = filters.maxPrice
       params.sort = filters.sortBy
@@ -109,9 +124,17 @@ export function useProductFilters() {
   const resetFilters = useCallback(() => {
     setFilters({
       category: null,
+      brand: null,
       search: '',
+      ids: null,
       minPrice: 0,
       maxPrice: 100000000,
+      cpu: null,
+      ram: null,
+      storage: null,
+      screen: null,
+      os: null,
+      availability: null,
       sortBy: 'newest',
     })
     setPagination((prev) => ({ ...prev, page: 1 }))

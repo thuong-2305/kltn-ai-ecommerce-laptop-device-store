@@ -4,9 +4,9 @@ import { SectionTitle, Toast, Field, inputCls } from './shared'
 
 export function PersonalInfoTab({ profile, onUpdate }) {
   const [form, setForm] = useState({
-    first_name: profile?.first_name || '',
-    last_name: profile?.last_name || '',
-    email: profile?.email || '',
+    first_name: profile?.user?.first_name || '',
+    last_name: profile?.user?.last_name || '',
+    email: profile?.user?.email || '',
     phone: profile?.phone || '',
     address: profile?.address || '',
   })
@@ -17,9 +17,9 @@ export function PersonalInfoTab({ profile, onUpdate }) {
   // Sync when profile changes
   useState(() => {
     if (profile) setForm({
-      first_name: profile.first_name || '',
-      last_name: profile.last_name || '',
-      email: profile.email || '',
+      first_name: profile.user?.first_name || '',
+      last_name: profile.user?.last_name || '',
+      email: profile.user?.email || '',
       phone: profile.phone || '',
       address: profile.address || '',
     })

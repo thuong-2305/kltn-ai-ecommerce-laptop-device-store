@@ -10,6 +10,9 @@ import ProductListErrorState from '../../features/product/components/ProductList
 function SearchPage() {
   const [searchParams] = useSearchParams()
   const query = searchParams.get('q') || ''
+  const ids = searchParams.get('ids') || ''
+  const isImageSearch = searchParams.get('img_search') === 'true'
+  const imagePreview = isImageSearch ? sessionStorage.getItem('image_search_preview') : null
 
   // Sử dụng lại hook filter từ ProductListPage để fetch data chuẩn xác
   const {
@@ -24,8 +27,12 @@ function SearchPage() {
 
   // Đồng bộ URL parameter với hook
   useEffect(() => {
-    updateFilters({ search: query, category: null, sortBy: 'newest' })
-  }, [query, updateFilters])
+    if (ids) {
+      updateFilters({ ids: ids, search: '', category: null, sortBy: 'newest' })
+    } else {
+      updateFilters({ ids: null, search: query, category: null, sortBy: 'newest' })
+    }
+  }, [query, ids, updateFilters])
 
   return (
     <div className="mx-4.5 py-6 pb-16 min-h-[60vh]">
@@ -38,12 +45,37 @@ function SearchPage() {
 
       {/* Header */}
       <div className="mb-8 border-b border-slate-200/80 pb-4">
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
-          Kết quả tìm kiếm cho: <span className="text-blue-600">"{query}"</span>
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          {!loading ? `Tìm thấy ${pagination.total} sản phẩm phù hợp.` : 'Đang tìm kiếm...'}
-        </p>
+        {isImageSearch ? (
+          <div className="flex flex-col md:flex-row gap-5 items-start md:items-center">
+            {imagePreview && (
+              <div className="relative group shrink-0">
+                <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl blur-md opacity-25 group-hover:opacity-40 transition duration-300" />
+                <img 
+                  src={imagePreview} 
+                  alt="Ảnh tìm kiếm" 
+                  className="relative w-24 h-24 object-cover rounded-xl border border-slate-200 shadow-sm"
+                />
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
+                Kết quả tìm kiếm bằng hình ảnh
+              </h1>
+              <p className="text-slate-500 text-sm mt-1">
+                {!loading ? `Tìm thấy ${pagination.total} sản phẩm tương tự với hình ảnh của bạn.` : 'Đang phân tích hình ảnh...'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
+              Kết quả tìm kiếm cho: <span className="text-blue-600">"{query}"</span>
+            </h1>
+            <p className="text-slate-500 text-sm mt-1">
+              {!loading ? `Tìm thấy ${pagination.total} sản phẩm phù hợp.` : 'Đang tìm kiếm...'}
+            </p>
+          </>
+        )}
       </div>
 
       {/* Content */}

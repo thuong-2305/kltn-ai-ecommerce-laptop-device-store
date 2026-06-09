@@ -3,6 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { Heart, Eye, GitCompare } from 'lucide-react'
 import { formatPrice } from '../../../shared/utils/formatters'
 
+const parseConfig = (configStr) => {
+  if (!configStr) return null
+  const specs = {}
+  const segments = configStr.split('- ')
+  segments.forEach((seg) => {
+    const trimmed = seg.trim()
+    if (!trimmed) return
+    const parts = trimmed.split(' + ')
+    if (parts.length >= 2) {
+      const label = parts[0].trim().toLowerCase() // e.g. "cpu", "ram"
+      const val = parts.slice(1).map(p => {
+        if (p.includes(': ')) {
+          return p.split(': ')[1].trim()
+        }
+        return p.trim()
+      }).join(', ')
+      specs[label] = val
+    }
+  })
+  return specs
+}
+
 /**
  * ProductCard - Modern redesigned product card component
  * Features: Badge, hover effects, rating, price, action buttons
@@ -153,19 +175,50 @@ function ProductCard({ product, onAddToCart, onAddToWishlist, onQuickView, onCom
           <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
             {product.short_description}
           </p>
-        ) : (
-          <ul className="text-xs text-slate-500 space-y-1">
-            <li className="flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-slate-300"></span> CPU: Intel Core i5</li>
-            <li className="flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-slate-300"></span> RAM: 16GB</li>
-            <li className="flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-slate-300"></span> SSD: 512GB</li>
-          </ul>
-        )}
+        ) : (() => {
+          const specs = parseConfig(product.config)
+          if (!specs || Object.keys(specs).length === 0) return null
+          return (
+            <ul className="text-xs text-slate-500 space-y-1">
+              {specs.cpu && (
+                <li className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  <span className="font-semibold text-slate-700">CPU:</span> {specs.cpu}
+                </li>
+              )}
+              {specs.ram && (
+                <li className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  <span className="font-semibold text-slate-700">RAM:</span> {specs.ram}
+                </li>
+              )}
+              {(specs.storage || specs.ssd) && (
+                <li className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  <span className="font-semibold text-slate-700">Ổ cứng:</span> {specs.storage || specs.ssd}
+                </li>
+              )}
+              {specs.screen && (
+                <li className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  <span className="font-semibold text-slate-700">Màn hình:</span> {specs.screen}
+                </li>
+              )}
+              {specs.os && (
+                <li className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  <span className="font-semibold text-slate-700">HĐH:</span> {specs.os}
+                </li>
+              )}
+            </ul>
+          )
+        })()}
 
         {/* Rating & Reviews */}
         <div className="flex items-center gap-2 mt-auto">
-          {renderStars(product.average_rating || 4.5)}
+          {renderStars(product.average_rating || 0)}
           <span className="text-xs text-slate-500 font-medium">
-            ({product.review_count || Math.floor(Math.random() * 50) + 5})
+            ({product.review_count || 0})
           </span>
         </div>
 

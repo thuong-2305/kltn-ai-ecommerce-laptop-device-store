@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import {
   User, ShieldCheck, Package, ChevronRight, LogOut,
   Camera, AlertCircle, Phone, Mail, MessageCircle,
-  Heart, MapPin, Bell, Gift, Star, Settings
+  Heart, MapPin, Bell, Gift, Star, Settings,
+  Shield, Truck, RotateCcw, MessageSquare
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useProfile } from '../../features/profile/hooks/useProfile'
@@ -37,7 +38,7 @@ const NAV_GROUPS = [
 
 /* ─── Avatar ─────────────────────────────────────────────────── */
 function UserAvatar({ profile, size = 'lg' }) {
-  const name = profile?.full_name || profile?.username || '?'
+  const name = profile?.user?.full_name || profile?.user?.username || '?'
   const initials = name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase().slice(0, 2)
   const sz = size === 'lg' ? 'w-[72px] h-[72px] text-xl' : 'w-10 h-10 text-sm'
   return (
@@ -85,9 +86,20 @@ function ComingSoonTab({ label, icon: Icon }) {
 /* ─── ProfilePage ─────────────────────────────────────────────── */
 function ProfilePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, loading: authLoading, logout } = useAuth()
   const { profile, loading, error, updateProfile, changePassword } = useProfile()
   const [activeTab, setActiveTab] = useState('info')
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const tabParam = params.get('tab')
+    if (tabParam) {
+      setActiveTab(tabParam)
+    } else if (location.state && location.state.activeTab) {
+      setActiveTab(location.state.activeTab)
+    }
+  }, [location])
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) navigate('/auth?redirect=/profile', { replace: true })
@@ -175,10 +187,10 @@ function ProfilePage() {
               ) : profile ? (
                 <>
                   <h2 className="font-black text-slate-900 text-[15px] leading-tight">
-                    {profile.full_name || profile.username}
+                    {profile.user?.full_name || profile.user?.username}
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5 truncate">{profile.email}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Thành viên từ {profile.date_joined}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">{profile.user?.email}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Thành viên từ {profile.user?.date_joined ? new Date(profile.user.date_joined).toLocaleDateString('vi-VN') : ''}</p>
 
                   {/* Quick stats */}
                   <div className="flex gap-2 mt-4">
@@ -317,13 +329,15 @@ function ProfilePage() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { icon: '🛡️', label: 'Bảo mật tuyệt đối', sub: 'Mã hoá SSL 256-bit' },
-                { icon: '🚚', label: 'Giao hàng nhanh', sub: 'Nhanh nhất 2 giờ' },
-                { icon: '↩️', label: 'Đổi trả dễ dàng', sub: 'Trong vòng 30 ngày' },
-                { icon: '💬', label: 'Hỗ trợ 24/7', sub: 'Luôn sẵn sàng giúp đỡ' },
-              ].map(({ icon, label, sub }) => (
+                { icon: Shield, label: 'Bảo mật tuyệt đối', sub: 'Mã hoá SSL 256-bit' },
+                { icon: Truck, label: 'Giao hàng nhanh', sub: 'Nhanh nhất 2 giờ' },
+                { icon: RotateCcw, label: 'Đổi trả dễ dàng', sub: 'Trong vòng 30 ngày' },
+                { icon: MessageSquare, label: 'Hỗ trợ 24/7', sub: 'Luôn sẵn sàng giúp đỡ' },
+              ].map(({ icon: Icon, label, sub }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <span className="text-xl shrink-0">{icon}</span>
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                    <Icon size={16} />
+                  </div>
                   <div>
                     <p className="text-xs font-bold text-slate-800">{label}</p>
                     <p className="text-[11px] text-slate-500">{sub}</p>

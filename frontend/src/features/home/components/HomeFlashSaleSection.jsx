@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { Zap } from 'lucide-react'
 import { formatPrice } from '../../../shared/utils/formatters'
 
 function useFakeCountdown() {
@@ -34,12 +35,23 @@ function useFakeCountdown() {
 }
 
 function FlashSaleCard({ product }) {
-  // Giả lập dữ liệu Flash Sale nếu API chưa có
-  const discount = product.discount_percentage || Math.floor(Math.random() * 15) + 10 // 10-25%
-  const soldPercent = Math.floor(Math.random() * 50) + 40 // 40-90%
+  // Giả lập dữ liệu Flash Sale nếu API chưa có - sử dụng useMemo để tránh việc phần trăm/giá thay đổi liên tục theo mỗi giây của đồng hồ đếm ngược
+  const discount = useMemo(() => {
+    if (product.discount_percentage) return product.discount_percentage
+    // Tạo phần trăm giảm giá cố định dựa theo product.id để tránh ngẫu nhiên thay đổi mỗi lần re-render
+    const seed = product.id ? Number(product.id) || product.name.length : 7
+    return (seed % 15) + 10 // 10-24%
+  }, [product.discount_percentage, product.id, product.name])
+
+  const soldPercent = useMemo(() => {
+    const seed = product.id ? Number(product.id) || product.name.length : 7
+    return (seed % 50) + 40 // 40-89% cố định
+  }, [product.id, product.name])
   
   const originalPrice = product.price || 0
-  const salePrice = product.sale_price || Math.floor(originalPrice * (100 - discount) / 100)
+  const salePrice = useMemo(() => {
+    return product.sale_price || Math.floor(originalPrice * (100 - discount) / 100)
+  }, [product.sale_price, originalPrice, discount])
 
   return (
     <div className="bg-white rounded-xl p-3 flex flex-col relative border-2 border-transparent hover:border-blue-500 transition-all duration-300 group shadow-sm h-full">
@@ -101,7 +113,7 @@ export default function HomeFlashSaleSection({ products = [] }) {
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-5 mb-5 md:mb-6">
           <div className="flex items-center gap-2">
             <h2 className="text-[22px] md:text-[26px] font-black text-white uppercase tracking-tight">DEAL HOT GIỜ VÀNG</h2>
-            <span className="text-yellow-300 text-2xl md:text-3xl filter drop-shadow-[0_0_8px_rgba(253,224,71,0.8)] animate-pulse">⚡</span>
+            <Zap className="text-yellow-300 fill-yellow-300 w-7 h-7 filter drop-shadow-[0_0_8px_rgba(253,224,71,0.8)] animate-pulse shrink-0" />
           </div>
 
           <div className="flex items-center gap-2">

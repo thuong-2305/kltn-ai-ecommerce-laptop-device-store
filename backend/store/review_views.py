@@ -1,20 +1,24 @@
 import json
+import logging
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.utils import timezone
 from .models import Product, Review
-from datetime import datetime
+from shared.utils import get_authenticated_user
+
+logger = logging.getLogger(__name__)
+
+# Max 5MB per review image
+MAX_REVIEW_IMAGE_SIZE = 5 * 1024 * 1024
 
 
 def _get_user(request):
     """Return (user, None) or (None, error_response)."""
-    jwt_auth = JWTAuthentication()
     try:
-        result = jwt_auth.authenticate(request)
-        if result is None:
+        user = get_authenticated_user(request, raise_on_invalid_token=True)
+        if user is None:
             return None, JsonResponse({'error': 'Chưa xác thực'}, status=401)
-        user, _ = result
         return user, None
     except Exception:
         return None, JsonResponse({'error': 'Token không hợp lệ'}, status=401)
@@ -22,6 +26,13 @@ def _get_user(request):
 
 def _serialize_review(review, request=None):
     from store.views import _build_media_url
+    images = []
+    # Fetch related images from review.images relation
+    for img in review.images.all():
+        url = _build_media_url(request, img.image)
+        if url:
+            images.append(url)
+            
     return {
         'id': review.id,
         'user': {
@@ -34,6 +45,7 @@ def _serialize_review(review, request=None):
         'sentiment': review.sentiment,
         'review_date': review.review_date.strftime('%d/%m/%Y') if review.review_date else '',
         'is_spam': review.is_spam,
+        'images': images,
     }
 
 
@@ -49,17 +61,30 @@ def product_reviews_api(request, pk):
         Review.objects
         .filter(product=product, is_spam=False)
         .select_related('user')
+        .prefetch_related('images')
         .order_by('-review_date')
     )
 
     # Aggregate
     total = reviews.count()
     if total > 0:
-        from django.db.models import Avg, Count
-        agg = reviews.aggregate(avg=Avg('rating'))
+        from django.db.models import Avg, Count, Q
+        agg = reviews.aggregate(
+            avg=Avg('rating'),
+            star_1=Count('id', filter=Q(rating=1)),
+            star_2=Count('id', filter=Q(rating=2)),
+            star_3=Count('id', filter=Q(rating=3)),
+            star_4=Count('id', filter=Q(rating=4)),
+            star_5=Count('id', filter=Q(rating=5)),
+        )
         avg_rating = round(float(agg['avg'] or 0), 1)
-        # per-star breakdown
-        breakdown = {i: reviews.filter(rating=i).count() for i in range(1, 6)}
+        breakdown = {
+            1: agg['star_1'],
+            2: agg['star_2'],
+            3: agg['star_3'],
+            4: agg['star_4'],
+            5: agg['star_5'],
+        }
     else:
         avg_rating = 0
         breakdown = {i: 0 for i in range(1, 6)}
@@ -83,20 +108,40 @@ def submit_review_api(request):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (ValueError, json.JSONDecodeError):
-        return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+    product_id = None
+    rating = None
+    comment = ''
+    title = ''
 
-    product_id = body.get('product_id')
-    rating = body.get('rating')
-    comment = body.get('comment', '').strip()
-    title = body.get('title', '').strip()
+    # Handle application/json vs multipart/form-data
+    if request.content_type == 'application/json':
+        try:
+            body = json.loads(request.body)
+            product_id = body.get('product_id')
+            rating = body.get('rating')
+            comment = body.get('comment', '').strip()
+            title = body.get('title', '').strip()
+        except (ValueError, json.JSONDecodeError):
+            return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+    else:
+        product_id = request.POST.get('product_id')
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment', '').strip()
+        title = request.POST.get('title', '').strip()
+
+    # Convert types
+    try:
+        if product_id is not None:
+            product_id = int(product_id)
+        if rating is not None:
+            rating = int(rating)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Dữ liệu product_id hoặc rating không hợp lệ'}, status=400)
 
     # Validation
     if not product_id:
         return JsonResponse({'error': 'Thiếu product_id'}, status=400)
-    if not rating or not isinstance(rating, int) or rating not in range(1, 6):
+    if not rating or rating not in range(1, 6):
         return JsonResponse({'error': 'Đánh giá phải từ 1 đến 5 sao'}, status=400)
     if not comment:
         return JsonResponse({'error': 'Vui lòng nhập nội dung đánh giá'}, status=400)
@@ -116,14 +161,28 @@ def submit_review_api(request):
         defaults={
             'rating': rating,
             'comment': full_comment,
-            'review_date': datetime.now(),
+            'review_date': timezone.now(),
             'is_spam': False,
         }
     )
 
+    # Handle image uploads
+    uploaded_files = request.FILES.getlist('images') or request.FILES.getlist('image')
+    if uploaded_files:
+        # Validate image sizes
+        for file in uploaded_files[:5]:
+            if file.size > MAX_REVIEW_IMAGE_SIZE:
+                return JsonResponse({'error': f'Kích thước ảnh "{file.name}" vượt quá 5MB'}, status=400)
+        if not created:
+            # Remove existing review images if updating review
+            review.images.all().delete()
+        for file in uploaded_files[:5]:
+            from .models import ReviewImage
+            ReviewImage.objects.create(review=review, image=file)
+
     return JsonResponse({
         'message': 'Đánh giá đã được ghi nhận thành công!' if created else 'Đánh giá đã được cập nhật!',
-        'review': _serialize_review(review),
+        'review': _serialize_review(review, request),
         'created': created,
     }, status=201 if created else 200)
 

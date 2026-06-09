@@ -1,38 +1,59 @@
-import json
-from django.views.decorators.http import require_GET, require_POST
-from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
-from .cart import Cart
-from store.models import Product
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.response import Response
+
+from store.models import Product, ProductVariant
+from .cart import Cart, parse_session_key
 
 
-def _build_media_url(request, file_field):
-    if not file_field:
-        return None
-    try:
-        return request.build_absolute_uri(file_field.url)
-    except ValueError:
-        return None
+from shared.utils import build_media_url as _build_media_url
+
 
 
 def _serialize_cart(request, cart):
     """Return full cart payload: items list + totals."""
-    product_ids = list(cart.cart.keys())
-    products = {
-        str(p.id): p
-        for p in Product.objects.filter(id__in=product_ids).select_related('category')
+    # Batch load all products and variants to avoid N+1 queries
+    all_pids = set()
+    all_vids = set()
+    for key in cart.cart.keys():
+        pid, vid = parse_session_key(key)
+        all_pids.add(pid)
+        if vid:
+            all_vids.add(vid)
+
+    products_map = {
+        p.id: p for p in Product.objects.filter(id__in=all_pids).select_related('category')
     }
+    variants_map = {
+        v.id: v for v in ProductVariant.objects.filter(id__in=all_vids)
+    } if all_vids else {}
 
     items = []
-    for pid, qty in cart.cart.items():
-        product = products.get(str(pid))
+    for key, qty in cart.cart.items():
+        pid, vid = parse_session_key(key)
+        product = products_map.get(pid)
         if not product:
             continue
-        price = float(product.sale_price if product.is_sale and product.sale_price else product.price)
+
+        variant = variants_map.get(vid) if vid else None
+
+        if variant:
+            price = float(variant.price)
+            name = f"{product.name} ({variant.name})"
+            sku = variant.sku
+        else:
+            price = float(product.sale_price if product.is_sale and product.sale_price else product.price)
+            name = product.name
+            sku = None
+
         items.append({
-            'product_id': int(pid),
-            'name': product.name,
+            'product_id': pid,
+            'variant_id': vid,
+            'variant_name': variant.name if variant else None,
+            'sku': sku,
+            'name': name,
             'image': _build_media_url(request, product.image),
             'category': product.category.name if product.category_id else None,
             'price': price,
@@ -42,86 +63,133 @@ def _serialize_cart(request, cart):
 
     shipping_method = cart.shipping_method
     shipping_cost = cart.get_shipping_cost(shipping_method)
-    total = sum(it['subtotal'] for it in items)
+    subtotal = sum(it['subtotal'] for it in items)
 
     return {
         'items': items,
         'item_count': len(items),
         'total_qty': sum(it['quantity'] for it in items),
-        'subtotal': total,
+        'subtotal': subtotal,
         'shipping_method': shipping_method,
         'shipping_cost': shipping_cost,
-        'total': total + shipping_cost,
+        'total': subtotal + shipping_cost,
     }
 
 
 # ─── GET /api/cart/ ───────────────────────────────────────────────
-@require_GET
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([JWTAuthentication])
 def cart_summary_api(request):
     cart = Cart(request)
-    return JsonResponse(_serialize_cart(request, cart))
+    return Response(_serialize_cart(request, cart))
 
 
 # ─── POST /api/cart/add/ ─────────────────────────────────────────
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([JWTAuthentication])
 def cart_add_api(request):
     try:
-        body = json.loads(request.body)
+        body = request.data
         product_id = int(body.get('product_id', 0))
+        variant_id = body.get('variant_id')
+        if variant_id:
+            variant_id = int(variant_id)
+        else:
+            variant_id = None
         qty = max(1, int(body.get('quantity', 1)))
-    except (ValueError, TypeError, json.JSONDecodeError):
-        return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+    except (ValueError, TypeError):
+        return Response({'error': 'Dữ liệu không hợp lệ'}, status=400)
 
     product = get_object_or_404(Product, id=product_id)
+    variant = None
+    if variant_id:
+        variant = get_object_or_404(ProductVariant, id=variant_id, product=product)
+
     cart = Cart(request)
-    msg = cart.add(product=product, quantity=qty)
-    return JsonResponse({**_serialize_cart(request, cart), 'message': msg})
+    msg = cart.add(product=product, quantity=qty, variant=variant)
+    return Response({**_serialize_cart(request, cart), 'message': msg})
 
 
 # ─── POST /api/cart/update/ ──────────────────────────────────────
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([JWTAuthentication])
 def cart_update_api(request):
     try:
-        body = json.loads(request.body)
+        body = request.data
         product_id = int(body.get('product_id', 0))
+        variant_id = body.get('variant_id')
+        if variant_id:
+            variant_id = int(variant_id)
+        else:
+            variant_id = None
         qty = max(1, int(body.get('quantity', 1)))
-    except (ValueError, TypeError, json.JSONDecodeError):
-        return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+    except (ValueError, TypeError):
+        return Response({'error': 'Dữ liệu không hợp lệ'}, status=400)
 
     cart = Cart(request)
-    cart.update(product=product_id, quantity=qty)
-    return JsonResponse({**_serialize_cart(request, cart), 'message': 'Đã cập nhật số lượng'})
+    cart.update(product=product_id, quantity=qty, variant_id=variant_id)
+    return Response({**_serialize_cart(request, cart), 'message': 'Đã cập nhật số lượng'})
 
 
 # ─── POST /api/cart/delete/ ──────────────────────────────────────
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([JWTAuthentication])
 def cart_delete_api(request):
     try:
-        body = json.loads(request.body)
+        body = request.data
         product_id = int(body.get('product_id', 0))
-    except (ValueError, TypeError, json.JSONDecodeError):
-        return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+        variant_id = body.get('variant_id')
+        if variant_id:
+            variant_id = int(variant_id)
+        else:
+            variant_id = None
+    except (ValueError, TypeError):
+        return Response({'error': 'Dữ liệu không hợp lệ'}, status=400)
 
     cart = Cart(request)
-    cart.delete(product=product_id)
-    return JsonResponse({**_serialize_cart(request, cart), 'message': 'Đã xóa sản phẩm'})
+    cart.delete(product=product_id, variant_id=variant_id)
+    return Response({**_serialize_cart(request, cart), 'message': 'Đã xóa sản phẩm'})
 
 
 # ─── POST /api/cart/shipping/ ────────────────────────────────────
-@csrf_exempt
-@require_POST
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([JWTAuthentication])
 def cart_shipping_api(request):
     try:
-        body = json.loads(request.body)
+        body = request.data
         method = body.get('shipping_method', 'normal')
         if method not in ('normal', 'express'):
-            return JsonResponse({'error': 'Phương thức vận chuyển không hợp lệ'}, status=400)
-    except (ValueError, json.JSONDecodeError):
-        return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+            return Response({'error': 'Phương thức vận chuyển không hợp lệ'}, status=400)
+    except (ValueError, TypeError):
+        return Response({'error': 'Dữ liệu không hợp lệ'}, status=400)
 
     cart = Cart(request)
     cart.update_shipping(shipping_method=method)
-    return JsonResponse({**_serialize_cart(request, cart), 'message': f'Đã chọn giao hàng {method}'})
+    return Response({**_serialize_cart(request, cart), 'message': f'Đã chọn giao hàng {method}'})
+
+
+# ─── POST /api/cart/merge/ ───────────────────────────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+def cart_merge_api(request):
+    try:
+        body = request.data or {}
+        session_cart = body.get('cart')
+        if not session_cart:
+            session_cart = request.session.get('session_key', {})
+    except (ValueError, TypeError):
+        return Response({'error': 'Dữ liệu không hợp lệ'}, status=400)
+
+    cart = Cart(request)
+    cart.merge(session_cart)
+    # Clear guest cart session to avoid double merge
+    if 'session_key' in request.session:
+        request.session['session_key'] = {}
+        request.session.modified = True
+    return Response({**_serialize_cart(request, cart), 'message': 'Đồng bộ giỏ hàng thành công'})

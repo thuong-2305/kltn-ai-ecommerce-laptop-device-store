@@ -11,7 +11,11 @@ const initialState = {
 
 export const useHomeStore = create((set, get) => ({
   ...initialState,
-  loadHomeData: async () => {
+  loadHomeData: async (force = false) => {
+    if (get().homeData && !force) {
+      return
+    }
+
     if (get().loading) {
       return
     }

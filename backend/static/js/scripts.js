@@ -1,3 +1,0 @@
-// Product details
-
-// Product details

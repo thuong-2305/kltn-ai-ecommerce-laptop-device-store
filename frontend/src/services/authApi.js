@@ -13,6 +13,7 @@ export const authApi = {
   me: (accessToken) =>
     api.get('/me/', { headers: { Authorization: `Bearer ${accessToken}` } }).then(r => r.data),
   googleOAuth: (id_token) => api.post('/google/', { id_token }).then(r => r.data),
+  sendOTP: (email) => api.post('/otp/send/', { email }).then(r => r.data),
 
   // ── Profile ─────────────────────────────────────────────────
   getProfile: (token) =>

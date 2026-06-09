@@ -2,17 +2,18 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('payment_success', views.payment_success, name='payment_success'),
-    path('checkout', views.checkout, name='checkout'),
-    path('billing_info', views.billing_info, name='billing_info'),
-    path('process_order', views.process_order, name='process_order'),
-    path('process_order_paypal', views.process_order_paypal, name='process_order_paypal'),
-    path('process_order_upon', views.process_order_upon, name='process_order_upon'),
-    path('shipped_dash', views.shipped_dash, name='shipped_dash'),
-    path('not_shipped_dash', views.not_shipped_dash, name='not_shipped_dash'),
-    path('orders/<int:pk>', views.orders, name='orders'),
     path('get-data/', views.get_data, name='get_data'),
-    path('vnpay_checkout/', views.vnpay_checkout, name='vnpay_checkout'),
-    path('vnpay_return/', views.payment_return, name='vnpay_return'),
-    path('checkout-rest/', views.checkout_rest, name='checkout_rest'),
+    path('vnpay_checkout/', views.api_vnpay_checkout, name='vnpay_checkout'),
+    path('vnpay_return/', views.api_vnpay_return, name='vnpay_return'),
+    path('vnpay_ipn/', views.api_vnpay_ipn, name='vnpay_ipn'),
+    path('shipping-address/', views.api_get_shipping_address, name='api_get_shipping_address'),
+    path('addresses/', views.api_user_addresses, name='api_user_addresses'),
+    path('addresses/<int:pk>/', views.api_user_address_detail, name='api_user_address_detail'),
+    path('addresses/<int:pk>/set-default/', views.api_user_address_set_default, name='api_user_address_set_default'),
+
+    # Order APIs
+    path('orders/create/', views.api_order_create, name='api_order_create'),
+    path('orders/history/', views.api_order_history, name='api_order_history'),
+    path('orders/<str:pk>/detail/', views.api_order_detail, name='api_order_detail'),
+    path('orders/<int:pk>/cancel/', views.api_order_cancel, name='api_order_cancel'),
 ]

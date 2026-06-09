@@ -1,3 +1,7 @@
+import logging
+import tempfile
+import os
+
 from django.http import JsonResponse
 from django.db.models import Avg, Q, Sum, Case, When, F, Count
 from django.db.utils import ProgrammingError
@@ -6,19 +10,17 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 from django.core.paginator import Paginator
 
-from .models import Product, Category, ProductThumbnail, Profile, Review, SaleEvent
+from shared.utils import build_media_url as _build_media_url
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from rest_framework.response import Response
+from rest_framework import status
+from .utils import find_similar_products
 
-import json
+from .models import Product, Category, Brand, ProductThumbnail, Review, SaleEvent
 
-
-def _build_media_url(request, file_field):
-    if not file_field:
-        return None
-
-    try:
-        return request.build_absolute_uri(file_field.url)
-    except ValueError:
-        return None
+logger = logging.getLogger(__name__)
 
 
 def _get_active_sales():
@@ -60,6 +62,15 @@ def _serialize_category(request, category, sale=None):
     }
 
 
+def _serialize_brand(request, brand):
+    return {
+        'id': brand.id,
+        'name': brand.name,
+        'image': _build_media_url(request, brand.image),
+        'product_count': int(getattr(brand, 'product_count', 0) or 0),
+    }
+
+
 def _serialize_sale(request, sale):
     return {
         'id': sale.id,
@@ -97,6 +108,10 @@ def _serialize_product(request, product, sale=None):
             'id': product.category_id,
             'name': product.category.name if product.category_id else None,
         },
+        'brand': {
+            'id': getattr(product, 'brand_id', None),
+            'name': product.brand.name if getattr(product, 'brand', None) else None,
+        } if getattr(product, 'brand_id', None) else None,
         'image': _build_media_url(request, product.image),
         'thumbnails': thumbnails,
         'price': base_price,
@@ -106,7 +121,8 @@ def _serialize_product(request, product, sale=None):
         'total_sold': int(getattr(product, 'total_sold', 0) or 0),
         'average_rating': round(float(getattr(product, 'average_rating', 0) or 0), 1),
         'review_count': int(getattr(product, 'review_count', 0) or 0),
-        'short_description': product.short_description or '',
+        'short_description': getattr(product, 'short_description', '') or '',
+        'config': getattr(product, 'config', '') or '',
     }
 
 
@@ -128,7 +144,7 @@ def products_api(request):
 
         qs = (
             Product.objects
-            .select_related('category')
+            .select_related('category', 'brand')
             .prefetch_related('thumbnails')
             .annotate(
                 average_rating=Avg('review__rating', filter=Q(review__is_spam=False)),
@@ -145,13 +161,59 @@ def products_api(request):
             except (ValueError, TypeError):
                 pass
 
+        # --- Filter: brand ---
+        brand_id = request.GET.get('brand')
+        if brand_id:
+            try:
+                qs = qs.filter(brand_id=int(brand_id))
+            except (ValueError, TypeError):
+                pass
+
+        # --- Filter: ids ---
+        ids = request.GET.get('ids')
+        is_custom_order = False
+        preserved = None
+        if ids:
+            try:
+                id_list = [int(x) for x in ids.split(',') if x.strip()]
+                if id_list:
+                    qs = qs.filter(id__in=id_list)
+                    preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(id_list)])
+                    is_custom_order = True
+            except (ValueError, TypeError):
+                pass
+
+        # --- Filter: cpu ---
+        cpu = request.GET.get('cpu')
+        if cpu:
+            qs = qs.filter(Q(config__icontains=cpu) | Q(specifications__key__name__iexact='CPU', specifications__value__icontains=cpu)).distinct()
+
+        # --- Filter: ram ---
+        ram = request.GET.get('ram')
+        if ram:
+            qs = qs.filter(Q(config__icontains=ram) | Q(specifications__key__name__iexact='RAM', specifications__value__icontains=ram)).distinct()
+
+        # --- Filter: storage ---
+        storage = request.GET.get('storage')
+        if storage:
+            qs = qs.filter(Q(config__icontains=storage) | Q(specifications__key__name__iexact='Ổ cứng', specifications__value__icontains=storage) | Q(specifications__key__name__iexact='Storage', specifications__value__icontains=storage)).distinct()
+
+        # --- Filter: screen ---
+        screen = request.GET.get('screen')
+        if screen:
+            qs = qs.filter(Q(config__icontains=screen) | Q(specifications__key__name__iexact='Màn hình', specifications__value__icontains=screen) | Q(specifications__key__name__iexact='Screen', specifications__value__icontains=screen)).distinct()
+
+        # --- Filter: os ---
+        os_param = request.GET.get('os')
+        if os_param:
+            qs = qs.filter(Q(config__icontains=os_param) | Q(specifications__key__name__iexact='Hệ điều hành', specifications__value__icontains=os_param) | Q(specifications__key__name__iexact='OS', specifications__value__icontains=os_param)).distinct()
+
         # --- Filter: search ---
         search = request.GET.get('search', '').strip()
         if search:
             qs = qs.filter(name__icontains=search)
 
-        # --- Filter: price range ---
-        # Use effective price (sale_price if on sale, else price)
+        # --- Price range filter ---
         qs = qs.annotate(
             effective_price=Case(
                 When(is_sale=True, sale_price__isnull=False, then=F('sale_price')),
@@ -167,15 +229,22 @@ def products_api(request):
             pass
 
         # --- Sorting ---
-        sort = request.GET.get('sort', 'newest')
-        sort_map = {
-            'newest': '-id',
-            'price-asc': 'effective_price',
-            'price-desc': '-effective_price',
-            'rating': '-average_rating',
-            'popular': '-total_sold',
-        }
-        qs = qs.order_by(sort_map.get(sort, '-id'))
+        sort = request.GET.get('sort')
+        if not sort and is_custom_order:
+            qs = qs.order_by(preserved)
+        else:
+            sort = sort or 'newest'
+            sort_map = {
+                'newest': '-id',
+                'price-asc': 'effective_price',
+                'price-desc': '-effective_price',
+                'rating': '-average_rating',
+                'popular': '-total_sold',
+            }
+            if is_custom_order and sort == 'newest':
+                qs = qs.order_by(preserved)
+            else:
+                qs = qs.order_by(sort_map.get(sort, '-id'))
 
         # --- Pagination ---
         try:
@@ -201,10 +270,12 @@ def products_api(request):
         }, json_dumps_params={'ensure_ascii': False})
 
     except Exception as exc:
-        return JsonResponse({'error': str(exc), 'results': []}, status=500)
+        logger.exception(f"Error in products_api: {exc}")
+        return JsonResponse({'error': 'Lỗi hệ thống. Vui lòng thử lại sau.', 'results': []}, status=500)
 
 
 @require_GET
+@cache_page(60 * 5)
 def categories_api(request):
     """REST API endpoint: GET /api/store/categories/"""
     try:
@@ -217,7 +288,24 @@ def categories_api(request):
         ]
         return JsonResponse({'results': data}, json_dumps_params={'ensure_ascii': False})
     except Exception as exc:
-        return JsonResponse({'error': str(exc), 'results': []}, status=500)
+        logger.exception(f"Error in categories_api: {exc}")
+        return JsonResponse({'error': 'Lỗi hệ thống. Vui lòng thử lại sau.', 'results': []}, status=500)
+
+
+@require_GET
+@cache_page(60 * 5)
+def brands_api(request):
+    """REST API endpoint: GET /api/store/brands/"""
+    try:
+        brands = Brand.objects.annotate(product_count=Count('products')).order_by('id')
+        data = [
+            _serialize_brand(request, b)
+            for b in brands
+        ]
+        return JsonResponse({'results': data}, json_dumps_params={'ensure_ascii': False})
+    except Exception as exc:
+        logger.exception(f"Error in brands_api: {exc}")
+        return JsonResponse({'error': 'Lỗi hệ thống. Vui lòng thử lại sau.', 'results': []}, status=500)
 
 
 @require_GET
@@ -229,8 +317,8 @@ def product_detail_api(request, pk):
     try:
         product = (
             Product.objects
-            .select_related('category')
-            .prefetch_related('thumbnails')
+            .select_related('category', 'brand')
+            .prefetch_related('thumbnails', 'specifications__key', 'variants')
             .annotate(
                 average_rating=Avg('review__rating', filter=Q(review__is_spam=False)),
                 review_count=Count('review', filter=Q(review__is_spam=False), distinct=True),
@@ -270,27 +358,42 @@ def product_detail_api(request, pk):
             config_items.append({'label': label, 'specs': specs})
     data['config'] = config_items
 
-    # Reviews (non-spam, recent first, limit 10)
+    # Serialize structured specifications
+    specifications = [
+        {
+            'id': spec.id,
+            'key': spec.key.name,
+            'value': spec.value
+        }
+        for spec in product.specifications.all()
+    ]
+    data['specifications'] = specifications
+
+    # Serialize product variants
+    variants = [
+        {
+            'id': var.id,
+            'sku': var.sku,
+            'name': var.name,
+            'price': float(var.price),
+            'stock': var.stock
+        }
+        for var in product.variants.all()
+    ]
+    data['variants'] = variants
+
+    # Reviews (non-spam, recent first, limit 20)
     review_qs = (
         Review.objects
         .filter(product=product, is_spam=False)
         .select_related('user')
+        .prefetch_related('images')
         .order_by('-review_date')[:20]
     )
-    data['reviews'] = [
-        {
-            'id': r.id,
-            'user': r.user.get_full_name() or r.user.username,
-            'rating': r.rating,
-            'comment': r.comment or '',
-            'sentiment': r.sentiment,
-            'review_date': r.review_date.isoformat(),
-        }
-        for r in review_qs
-    ]
+    from store.review_views import _serialize_review
+    data['reviews'] = [_serialize_review(r, request) for r in review_qs]
 
     # Rating distribution
-    from django.db.models import IntegerField
     dist_qs = (
         Review.objects
         .filter(product=product, is_spam=False)
@@ -305,7 +408,7 @@ def product_detail_api(request, pk):
     # Related products (same category, exclude self, limit 8)
     related_qs = (
         Product.objects
-        .select_related('category')
+        .select_related('category', 'brand')
         .prefetch_related('thumbnails')
         .annotate(
             average_rating=Avg('review__rating', filter=Q(review__is_spam=False)),
@@ -377,7 +480,27 @@ def home_api(request):
     return JsonResponse(payload, json_dumps_params={'ensure_ascii': False})
 
 
-def home(request):
-    """Legacy root URL — redirect to home_api for backward compatibility."""
-    return home_api(request)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle, UserRateThrottle])
+def search_by_image_api(request):
+    image_file = request.FILES.get('image')
+    if not image_file:
+        return Response({'error': 'Vui lòng cung cấp hình ảnh để tìm kiếm'}, status=status.HTTP_400_BAD_REQUEST)
 
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+            for chunk in image_file.chunks():
+                temp_file.write(chunk)
+            temp_filepath = temp_file.name
+
+        try:
+            product_ids = find_similar_products(temp_filepath, top_k=20)
+        finally:
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
+
+        return Response({'product_ids': product_ids})
+    except Exception as e:
+        logger.exception(f"Error in search_by_image_api: {e}")
+        return Response({'error': 'Lỗi hệ thống khi tìm kiếm. Vui lòng thử lại sau.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

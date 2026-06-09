@@ -8,14 +8,16 @@ import MainNav from '../shared/components/MainNav'
 import SiteFooter from '../shared/components/SiteFooter'
 import BackToTopButton from '../shared/components/BackToTopButton'
 import RouteSpinner from '../shared/components/RouteSpinner'
+import { useCart } from '../features/cart/hooks/useCart'
 
 function MainLayout() {
   const categories = useHomeStore((state) => state.homeData?.categories ?? EMPTY_ARRAY)
+  const { cart } = useCart()
 
   return (
     <div className="app-shell">
       <TopStrip />
-      <SiteHeader categories={categories} cartCount={0} />
+      <SiteHeader categories={categories} cartCount={cart.total_qty || 0} />
       <MainNav />
       <main className="flex flex-col flex-1">
         <Suspense fallback={<RouteSpinner />}>

@@ -1,5 +1,5 @@
 import { useState, Suspense } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { 
   Home, ShoppingBag, Box, List, Users, Tag, BarChart2, 
   FileText, Layout, MessageSquare, Folder, 
@@ -7,6 +7,7 @@ import {
   Search, Bell, Maximize, Monitor, Menu
 } from 'lucide-react'
 import RouteSpinner from '../../shared/components/RouteSpinner'
+import { useAuth } from '../../contexts/AuthContext'
 
 const SIDEBAR_SECTIONS = [
   {
@@ -42,7 +43,37 @@ const SIDEBAR_SECTIONS = [
 
 export default function AdminLayout() {
   const location = useLocation()
+  const { user, loading, isAuthenticated } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#0F172A]">
+        <RouteSpinner />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to={`/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />
+  }
+
+  if (!user?.is_staff) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#F8FAFC] p-4 text-center">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md shadow-xl flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full bg-red-105 flex items-center justify-center mb-4 text-red-500">
+            <Shield size={32} />
+          </div>
+          <h1 className="text-xl font-black text-slate-850 mb-2">Truy cập bị từ chối</h1>
+          <p className="text-slate-500 text-sm mb-6 leading-relaxed">Bạn không có quyền truy cập vào trang quản trị này. Vui lòng đăng nhập bằng tài khoản Quản trị viên.</p>
+          <Link to="/" className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md">
+            Quay lại trang chủ
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden text-slate-800 font-sans">

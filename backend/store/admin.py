@@ -1,14 +1,35 @@
 from django.contrib import admin
-from django.contrib.auth.models import User
-from .models import Category, Product, ProductImageFeature, ProductThumbnail, Profile, Review, SaleEvent
+from django.contrib.auth import get_user_model
+from .models import Category, Brand, Product, ProductImageFeature, ProductThumbnail, Review, SaleEvent, ProductSpecificationKey, ProductSpecification, ProductVariant
+from auth_api.models import Profile
+from payment.admin import custom_admin_site
 
-admin.site.register(Category)
-admin.site.register(Product)
-admin.site.register(SaleEvent)
-admin.site.register(Profile)
-admin.site.register(Review)
-admin.site.register(ProductThumbnail)
-admin.site.register(ProductImageFeature)
+User = get_user_model()
+
+class ProductSpecificationInline(admin.TabularInline):
+    model = ProductSpecification
+    extra = 1
+
+class ProductVariantInline(admin.TabularInline):
+    model = ProductVariant
+    extra = 1
+
+class ProductThumbnailInline(admin.TabularInline):
+    model = ProductThumbnail
+    extra = 1
+
+class ProductAdmin(admin.ModelAdmin):
+    inlines = [ProductThumbnailInline, ProductSpecificationInline, ProductVariantInline]
+
+custom_admin_site.register(Category)
+custom_admin_site.register(Brand)
+custom_admin_site.register(Product, ProductAdmin)
+custom_admin_site.register(SaleEvent)
+custom_admin_site.register(Profile)
+custom_admin_site.register(Review)
+custom_admin_site.register(ProductThumbnail)
+custom_admin_site.register(ProductImageFeature)
+custom_admin_site.register(ProductSpecificationKey)
 
 
 # Mix profile info and user info
@@ -23,8 +44,5 @@ class UserAdmin(admin.ModelAdmin):
     inlines = [ProfileInline]
 
 
-# Unregister the old way
-admin.site.unregister(User)
-
-# Re-register the new way
-admin.site.register(User, UserAdmin)
+# Register the custom UserAdmin to custom admin site
+custom_admin_site.register(User, UserAdmin)

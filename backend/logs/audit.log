@@ -1,0 +1,71 @@
+[ERROR] 2026-06-02 10:33:03,858 payment.views views.api_order_create:632 — Error creating order for user 1: table payment_order has no column named status
+Traceback (most recent call last):
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\backends\sqlite3\base.py", line 354, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table payment_order has no column named status
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows\Desktop\kltn-ai-ecommer\backend\payment\views.py", line 592, in api_order_create
+    order = Order.objects.create(
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\query.py", line 679, in create
+    obj.save(force_insert=True, using=self.db)
+  File "C:\Users\Windows\Desktop\kltn-ai-ecommer\backend\payment\models.py", line 69, in save
+    super().save(*args, **kwargs)
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\base.py", line 891, in save
+    self.save_base(
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\base.py", line 997, in save_base
+    updated = self._save_table(
+              ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\base.py", line 1160, in _save_table
+    results = self._do_insert(
+              ^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\base.py", line 1201, in _do_insert
+    return manager._insert(
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\query.py", line 1847, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\models\sql\compiler.py", line 1836, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows\AppData\Local\Programs\Python\Python311\Lib\site-packages\django\db\backends\sqlite3\base.py", line 354, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: table payment_order has no column named status
+[INFO] 2026-06-02 15:46:52,694 payment.views views.api_order_cancel:761 — Order ORD-20260602-696442 cancelled by user 1
+[INFO] 2026-06-02 15:46:57,513 payment.views views.api_vnpay_checkout:403 — VNPAY payment URL generated for order ORD-20260602-783053
+[INFO] 2026-06-02 15:51:29,775 payment.views views.api_order_cancel:761 — Order ORD-20260602-334484 cancelled by user 1
+[INFO] 2026-06-02 15:51:37,267 payment.views views.api_vnpay_checkout:403 — VNPAY payment URL generated for order ORD-20260602-775426
+[INFO] 2026-06-02 17:12:38,473 payment.views views.api_order_cancel:779 — Order ORD-20260602-808530 cancelled by user 1
+[INFO] 2026-06-02 17:12:45,593 payment.views views.api_vnpay_checkout:409 — VNPAY payment URL generated for order ORD-20260602-101295
+[INFO] 2026-06-02 20:11:56,897 payment.views views.api_order_cancel:779 — Order ORD-20260602-199934 cancelled by user 1
+[INFO] 2026-06-02 20:12:07,258 payment.views views.api_vnpay_checkout:409 — VNPAY payment URL generated for order ORD-20260602-354176
+[INFO] 2026-06-06 06:46:25,342 payment.views views.api_order_cancel:502 — Order ORD-20260605-541912 cancelled by user 1
+[INFO] 2026-06-06 06:46:32,249 payment.views views.api_vnpay_checkout:100 — VNPAY payment URL generated for order ORD-20260605-562700
+[INFO] 2026-06-06 06:52:45,279 payment.views views.api_order_cancel:502 — Order ORD-20260605-507574 cancelled by user 1
+[INFO] 2026-06-06 06:52:55,771 payment.views views.api_vnpay_checkout:100 — VNPAY payment URL generated for order ORD-20260605-837250

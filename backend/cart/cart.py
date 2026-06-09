@@ -1,153 +1,206 @@
-from store.models import Product, Profile
+from store.models import Product, ProductVariant
+from .models import Cart as CartModel, CartItem
+
+def parse_session_key(key):
+    if '_' in key:
+        pid, vid = key.split('_', 1)
+        return int(pid), int(vid)
+    return int(key), None
+
+def make_session_key(product_id, variant_id=None):
+    if variant_id:
+        return f"{product_id}_{variant_id}"
+    return str(product_id)
 
 class Cart():
     def __init__(self, request):
         self.session = request.session
-
-        # Get request
         self.request = request
-
-        # Get the current session key if it exist
-        cart = self.session.get('session_key')
-
-        # If the user is new, no session key!
-        if 'session_key' not in request.session:
-            cart = self.session['session_key'] = {}
-
-        # Make sure cart is available on all pages of site
-        self.cart = cart
-
         self.shipping_method = self.session.get('shipping_method', 'normal')
 
-    def add(self, product, quantity):
-        product_id = str(product.id)
-        product_qty = str(quantity)
-        msg = ""
-        if product_id in self.cart:
-            msg = "Sản phẩm đã có trong giả hàng" 
-        else:
-            self.cart[product_id] = int(product_qty)
-            msg = "Thêm vào giỏ hàng thành công" 
-
-        self.session.modified = True
-
-        # Deal with logged in user
         if self.request.user.is_authenticated:
-            # Get the current user profile
-            current_user = Profile.objects.filter(user__id=self.request.user.id)    
-            # convert {'3':1} to {"3":1}
-            carty = str(self.cart)
-            carty = carty.replace("\'", "\"") 
-            # Save carty to the Profile model
-            current_user.update(old_cart=str(carty))
-
-        return msg
-
-    def db_add(self, product, quantity):
-        product_id = str(product)
-        product_qty = str(quantity)
-
-        if product_id in self.cart:
-            pass
+            # Authenticated user: DB cart
+            self.db_cart, _ = CartModel.objects.get_or_create(user=self.request.user)
+            self.cart = {}
+            for item in self.db_cart.items.all():
+                key = make_session_key(item.product_id, item.variant_id)
+                self.cart[key] = item.quantity
         else:
-            self.cart[product_id] = int(product_qty)
+            # Guest user: Session cart
+            cart = self.session.get('session_key')
+            if 'session_key' not in self.session:
+                cart = self.session['session_key'] = {}
+            self.cart = cart
+
+    def add(self, product, quantity, variant=None):
+        quantity = int(quantity)
+        variant_id = variant.id if variant else None
+        
+        if self.request.user.is_authenticated:
+            # Check if item exists in DB cart
+            exists = CartItem.objects.filter(
+                cart=self.db_cart,
+                product=product,
+                variant=variant
+            ).exists()
+            if exists:
+                return "Sản phẩm đã có trong giỏ hàng"
             
-        self.session.modified = True
+            CartItem.objects.create(
+                cart=self.db_cart,
+                product=product,
+                variant=variant,
+                quantity=quantity
+            )
+            # Update local representation
+            key = make_session_key(product.id, variant_id)
+            self.cart[key] = quantity
+            return "Thêm vào giỏ hàng thành công"
+        else:
+            key = make_session_key(product.id, variant_id)
+            if key in self.cart:
+                return "Sản phẩm đã có trong giỏ hàng"
+            
+            self.cart[key] = quantity
+            self.session.modified = True
+            return "Thêm vào giỏ hàng thành công"
 
-        # Deal with logged in user
-        if self.request.user.is_authenticated:
-            # Get the current user profile
-            current_user = Profile.objects.filter(user__id=self.request.user.id)    
-            # convert {'3':1} to {"3":1}
-            carty = str(self.cart)
-            carty = carty.replace("\'", "\"") 
-            # Save carty to the Profile model
-            current_user.update(old_cart=str(carty))
+
 
     def __len__(self):
+        if self.request.user.is_authenticated:
+            return self.db_cart.items.count()
         return len(self.cart)
-    
+
     def total(self):
-        product_ids = self.cart.keys()
-        products = Product.objects.filter(id__in=product_ids)
-        quantities = self.cart
         total = 0
+        if self.request.user.is_authenticated:
+            items = self.db_cart.items.select_related('product', 'variant')
+            for item in items:
+                price = item.variant.price if item.variant else (item.product.sale_price if item.product.is_sale and item.product.sale_price else item.product.price)
+                total += price * item.quantity
+        else:
+            # Batch fetch to avoid N+1 queries
+            all_pids = set()
+            all_vids = set()
+            for key in self.cart.keys():
+                pid, vid = parse_session_key(key)
+                all_pids.add(pid)
+                if vid:
+                    all_vids.add(vid)
+            
+            products_map = {p.id: p for p in Product.objects.filter(id__in=all_pids)}
+            variants_map = {v.id: v for v in ProductVariant.objects.filter(id__in=all_vids)} if all_vids else {}
 
-        for key, val in quantities.items():
-            key = int(key)
-            for product in products:
-                if product.id == key:
-                    if product.is_sale:
-                        total += product.sale_price*val
-                    else:
-                        total += product.price*val
-
+            for key, qty in self.cart.items():
+                pid, vid = parse_session_key(key)
+                product = products_map.get(pid)
+                if not product:
+                    continue
+                if vid:
+                    variant = variants_map.get(vid)
+                    if not variant:
+                        continue
+                    price = variant.price
+                else:
+                    price = product.sale_price if product.is_sale and product.sale_price else product.price
+                total += price * qty
         return total
-    
+
     def get_shipping_cost(self, shipping_method):
         if shipping_method == 'normal':
             return 20000
         return 100000
-    
+
     def total_final(self):
         shipping_cost = self.get_shipping_cost(self.shipping_method)
         return self.total() + shipping_cost
-    
+
     def get_prods(self):
-        #get ids from cart
-        product_ids = self.cart.keys()
-        #use ids to lookup products in database model
-        products = Product.objects.filter(id__in=product_ids)
-        return products
-    
+        product_ids = []
+        if self.request.user.is_authenticated:
+            product_ids = self.db_cart.items.values_list('product_id', flat=True).distinct()
+        else:
+            for key in self.cart.keys():
+                pid, _ = parse_session_key(key)
+                product_ids.append(pid)
+        return Product.objects.filter(id__in=product_ids)
+
     def get_quants(self):
-        quantities = self.cart
-        return quantities
-    
-    def update(self, product, quantity) :
-        product_id = str(product)
-        product_qty = int(quantity)
-        
-        ourcart = self.cart
+        res = {}
+        for key, val in self.cart.items():
+            pid, _ = parse_session_key(key)
+            res[str(pid)] = val
+        return res
 
-        ourcart[product_id] = product_qty
+    def update(self, product, quantity, variant_id=None):
+        product_id = product.id if isinstance(product, Product) else int(product)
+        quantity = int(quantity)
 
-        self.session.modified = True
-        
-        # Deal with logged in user
         if self.request.user.is_authenticated:
-            # Get the current user profile
-            current_user = Profile.objects.filter(user__id=self.request.user.id)    
-            # convert {'3':1} to {"3":1}
-            carty = str(self.cart)
-            carty = carty.replace("\'", "\"") 
-            # Save carty to the Profile model
-            current_user.update(old_cart=str(carty))
+            CartItem.objects.filter(
+                cart=self.db_cart,
+                product_id=product_id,
+                variant_id=variant_id
+            ).update(quantity=quantity)
+            
+            key = make_session_key(product_id, variant_id)
+            self.cart[key] = quantity
+        else:
+            key = make_session_key(product_id, variant_id)
+            self.cart[key] = quantity
+            self.session.modified = True
 
-        thing = self.cart
-        return thing
-    
-    def delete(self, product):
-        product_id = str(product)
-        
-        if product_id in self.cart:
-            del self.cart[product_id]
+        return self.cart
 
-        self.session.modified = True
+    def delete(self, product, variant_id=None):
+        product_id = product.id if isinstance(product, Product) else int(product)
 
-        # Deal with logged in user
         if self.request.user.is_authenticated:
-            # Get the current user profile
-            current_user = Profile.objects.filter(user__id=self.request.user.id)    
-            # convert {'3':1} to {"3":1}
-            carty = str(self.cart)
-            carty = carty.replace("\'", "\"") 
-            # Save carty to the Profile model
-            current_user.update(old_cart=str(carty))
-
+            CartItem.objects.filter(
+                cart=self.db_cart,
+                product_id=product_id,
+                variant_id=variant_id
+            ).delete()
+            
+            key = make_session_key(product_id, variant_id)
+            if key in self.cart:
+                del self.cart[key]
+        else:
+            key = make_session_key(product_id, variant_id)
+            if key in self.cart:
+                del self.cart[key]
+                self.session.modified = True
 
     def update_shipping(self, shipping_method):
         self.session['shipping_method'] = shipping_method
         self.shipping_method = shipping_method
-
         self.session.modified = True
+
+    def merge(self, session_cart):
+        if not self.request.user.is_authenticated:
+            return
+
+        for key, qty in session_cart.items():
+            pid, vid = parse_session_key(key)
+            try:
+                product = Product.objects.get(id=pid)
+                variant = ProductVariant.objects.get(id=vid) if vid else None
+
+                item, created = CartItem.objects.get_or_create(
+                    cart=self.db_cart,
+                    product=product,
+                    variant=variant,
+                    defaults={'quantity': qty}
+                )
+                if not created:
+                    item.quantity += qty
+                    item.save()
+            except (Product.DoesNotExist, ProductVariant.DoesNotExist):
+                continue
+
+        # Sync local representation
+        self.cart = {}
+        for item in self.db_cart.items.all():
+            key = make_session_key(item.product_id, item.variant_id)
+            self.cart[key] = item.quantity

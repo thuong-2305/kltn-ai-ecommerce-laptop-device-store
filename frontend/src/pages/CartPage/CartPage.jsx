@@ -77,7 +77,7 @@ function CartPage() {
 
                 {cart.items.map((item) => (
                   <CartItemRow
-                    key={item.product_id}
+                    key={`${item.product_id}_${item.variant_id || ''}`}
                     item={item}
                     onUpdate={updateItem}
                     onRemove={removeItem}

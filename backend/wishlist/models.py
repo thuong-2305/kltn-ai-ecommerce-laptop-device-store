@@ -1,3 +1,11 @@
 from django.db import models
+from django.conf import settings
+from store.models import Product
 
-# Create your models here.
+class Wishlist(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='db_wishlist')
+    products = models.ManyToManyField(Product, related_name='db_wishlists', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Wishlist of {self.user.username}"

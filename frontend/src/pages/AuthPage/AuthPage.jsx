@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { Laptop, Shield, Zap, Star, ChevronLeft } from 'lucide-react'
+import { Laptop, Shield, Zap, Star, ChevronLeft, CheckCircle2, Sparkles } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { LoginForm, RegisterForm } from './components/AuthForms'
 
 /* ─── Decorative left panel ───────────────────────────────────── */
 const FEATURES = [
   { icon: Shield, text: 'Bảo mật tài khoản tuyệt đối' },
-  { icon: Zap,    text: 'Trải nghiệm mua sắm nhanh hơn' },
-  { icon: Star,   text: 'Ưu đãi độc quyền cho thành viên' },
+  { icon: Zap, text: 'Trải nghiệm mua sắm nhanh hơn' },
+  { icon: Star, text: 'Ưu đãi độc quyền cho thành viên' },
 ]
 
 function AuthLeftPanel() {
@@ -112,15 +112,14 @@ function AuthPage() {
 
           {/* Tab switcher */}
           <div className="flex bg-slate-100 rounded-2xl p-1 mb-8 self-start w-full">
-            {(['login', 'register'] ).map((m) => (
+            {(['login', 'register']).map((m) => (
               <button
                 key={m}
                 onClick={() => { setMode(m); setSuccessMsg('') }}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${
-                  mode === m
+                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${mode === m
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
-                }`}
+                  }`}
               >
                 {m === 'login' ? 'Đăng nhập' : 'Đăng ký'}
               </button>
@@ -130,7 +129,12 @@ function AuthPage() {
           {/* Heading */}
           <div className="mb-6">
             <h1 className="text-2xl font-black text-slate-900 mb-1">
-              {mode === 'login' ? 'Chào mừng trở lại 👋' : 'Tạo tài khoản mới'}
+              {mode === 'login' ? (
+                <span className="flex items-center gap-1.5">
+                  Chào mừng trở lại
+                  <Sparkles size={18} className="text-amber-500 fill-amber-300 shrink-0" />
+                </span>
+              ) : 'Tạo tài khoản mới'}
             </h1>
             <p className="text-sm text-slate-500">
               {mode === 'login'
@@ -142,7 +146,10 @@ function AuthPage() {
           {/* Success message */}
           {successMsg && (
             <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 font-medium">
-              ✅ {successMsg}
+              <span className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+                {successMsg}
+              </span>
             </div>
           )}
 

@@ -1,0 +1,19 @@
+/**
+ * toast - Custom toast notification dispatcher helper
+ */
+export const toast = {
+  success: (message, duration = 3000) => {
+    window.dispatchEvent(
+      new CustomEvent('show_toast', {
+        detail: { message, type: 'success', duration },
+      })
+    )
+  },
+  error: (message, duration = 4000) => {
+    window.dispatchEvent(
+      new CustomEvent('show_toast', {
+        detail: { message, type: 'error', duration },
+      })
+    )
+  },
+}

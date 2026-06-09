@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useProductDetail } from '../../features/product/hooks/useProductDetail'
-import { addToCart } from '../../services/cartApi'
+import { useCart } from '../../features/cart/hooks/useCart'
 import { useWishlistStore } from '../../hooks/useWishlistStore'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import {
@@ -31,6 +31,7 @@ function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState('specs')
   const [cartMsg, setCartMsg] = useState(null)
   const toggleWishlist = useWishlistStore(state => state.toggleWishlist)
+  const { addItem } = useCart()
   useDocumentTitle(
     product?.name,
     product?.short_description || 'Thông tin chi tiết laptop gaming, văn phòng, đồ họa chính hãng tại LAPTOP DEVICE STORE.'
@@ -41,12 +42,13 @@ function ProductDetailPage() {
     setTimeout(() => setCartMsg(null), 3000)
   }
 
-  const handleAddToCart = async (product, qty = 1) => {
-    try {
-      await addToCart(product.id, qty)
-      showMsg(`Đã thêm "${product.name}" vào giỏ hàng!`, 'success')
-    } catch {
-      showMsg('Không thể thêm sản phẩm. Vui lòng thử lại.', 'error')
+  const handleAddToCart = async (product, qty = 1, activeVariant = null) => {
+    const res = await addItem(product.id, qty, activeVariant?.id)
+    const variantText = activeVariant ? ` (${activeVariant.name})` : ''
+    if (res.success) {
+      showMsg(res.message || `Đã thêm "${product.name}"${variantText} vào giỏ hàng!`, 'success')
+    } else {
+      showMsg(res.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.', 'error')
     }
   }
 
@@ -68,7 +70,9 @@ function ProductDetailPage() {
             ? 'bg-white border-green-200 text-green-700'
             : 'bg-white border-red-200 text-red-700'
         }`}>
-          <span>{cartMsg.type === 'success' ? '✅' : '❌'}</span>
+          <span className={cartMsg.type === 'success' ? 'text-green-650' : 'text-red-650'}>
+            {cartMsg.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          </span>
           <span className="flex-1">{cartMsg.text}</span>
           {cartMsg.type === 'success' && (
             <Link to="/cart" className="text-blue-600 hover:underline font-bold whitespace-nowrap ml-1">
@@ -150,7 +154,7 @@ function ProductDetailPage() {
               {/* Tab content */}
               <div className="p-6 md:p-8">
                 {activeTab === 'specs' && (
-                  <ProductSpecs config={product.config} description="" />
+                  <ProductSpecs config={product.config} specifications={product.specifications} description="" />
                 )}
                 {activeTab === 'description' && (
                   <ProductSpecs config={[]} description={product.description} />
