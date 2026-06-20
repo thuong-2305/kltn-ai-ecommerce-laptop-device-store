@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, ShoppingCart, Share2, GitCompare, ChevronLeft, ChevronRight, Star, CheckCircle, Truck, RotateCcw, Shield, Edit3, Smile, Frown, Meh } from 'lucide-react'
+import { Heart, ShoppingCart, Share2, GitCompare, ChevronLeft, ChevronRight, Star, CheckCircle, Truck, RotateCcw, Shield, Edit3, Smile, Frown, Meh, ChevronDown, ChevronUp, Check } from 'lucide-react'
 import { formatPrice } from '../../../shared/utils/formatters'
+import { useAuth } from '../../../contexts/AuthContext'
 
 /* ─────────────────────────────────────────────────────────────────
    IMAGE GALLERY
@@ -243,16 +244,102 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
 /* ─────────────────────────────────────────────────────────────────
    SPECS TAB (config)
 ───────────────────────────────────────────────────────────────── */
+// Helper to render bold text between **
+function renderBoldText(text) {
+  const parts = text.split(/\*\*([^*]+)\*\*/)
+  return parts.map((part, index) => 
+    index % 2 === 1 ? <strong key={index} className="font-black text-slate-900">{part}</strong> : part
+  )
+}
+
+// Simple Markdown parser
+function parseDescription(text) {
+  if (!text) return ''
+  return text.split('\n').map((line, idx) => {
+    let cleanLine = line.trim()
+    
+    // Sub-header (### Header)
+    if (cleanLine.startsWith('###')) {
+      return (
+        <h4 key={idx} className="text-base font-bold text-slate-800 mt-6 mb-3 flex items-center gap-2 border-l-4 border-blue-600 pl-2.5">
+          {cleanLine.replace('###', '').trim()}
+        </h4>
+      )
+    }
+    
+    // Bullet list (- Item or * Item)
+    if (cleanLine.startsWith('-') || cleanLine.startsWith('*')) {
+      const content = cleanLine.substring(1).trim()
+      return (
+        <li key={idx} className="flex items-start gap-2 text-slate-600 my-2 text-[15px] pl-2">
+          <Check size={14} className="text-blue-500 shrink-0 mt-1" />
+          <span>{renderBoldText(content)}</span>
+        </li>
+      )
+    }
+    
+    // Empty paragraph spacer
+    if (cleanLine === '') {
+      return <div key={idx} className="h-2" />
+    }
+
+    return (
+      <p key={idx} className="text-slate-600 mb-3 text-[15px] leading-relaxed">
+        {renderBoldText(cleanLine)}
+      </p>
+    )
+  })
+}
+
 export function ProductSpecs({ config = [], specifications = [], description = '' }) {
   const hasSpecs = specifications && specifications.length > 0
   const hasConfig = config && config.length > 0
+  const [expanded, setExpanded] = useState(false)
+  const [isOverflow, setIsOverflow] = useState(false)
+  const descRef = useRef(null)
+
+  useEffect(() => {
+    if (descRef.current) {
+      setIsOverflow(descRef.current.scrollHeight > 320)
+    }
+  }, [description])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {description && (
-        <div>
-          <h3 className="text-base font-bold text-slate-900 mb-3">Mô tả sản phẩm</h3>
-          <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{description}</div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative">
+          <h3 className="text-base font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-100 pb-3">Mô tả sản phẩm</h3>
+          
+          <div 
+            ref={descRef}
+            className="transition-all duration-500 ease-in-out overflow-hidden"
+            style={{ maxHeight: expanded ? '3000px' : '320px' }}
+          >
+            <div className="space-y-1">
+              {parseDescription(description)}
+            </div>
+          </div>
+
+          {/* Gradient fade overlay */}
+          {isOverflow && !expanded && (
+            <div className="absolute bottom-[68px] left-0 w-full h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
+          )}
+
+          {/* Toggle Button */}
+          {isOverflow && (
+            <div className="mt-4 pt-4 border-t border-slate-100 text-center">
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="inline-flex items-center gap-1.5 text-xs font-black text-blue-600 uppercase tracking-wider hover:text-blue-800 transition-colors"
+              >
+                {expanded ? (
+                  <>Thu gọn mô tả <ChevronUp size={14} /></>
+                ) : (
+                  <>Xem toàn bộ mô tả <ChevronDown size={14} /></>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -265,7 +352,7 @@ export function ProductSpecs({ config = [], specifications = [], description = '
               <tbody>
                 {specifications.map((spec, idx) => (
                   <tr key={spec.id || idx} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3 px-5 font-semibold text-slate-705 w-1/3 align-top bg-slate-50/30">
+                    <td className="py-3 px-5 font-semibold text-slate-750 w-1/3 align-top bg-slate-50/30">
                       {spec.key}
                     </td>
                     <td className="py-3 px-5 text-slate-600 align-top">
@@ -283,21 +370,29 @@ export function ProductSpecs({ config = [], specifications = [], description = '
       {!hasSpecs && hasConfig && (
         <div>
           <h3 className="text-base font-bold text-slate-900 mb-4">Thông số kỹ thuật</h3>
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
+          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
             <table className="w-full text-sm">
               <tbody>
                 {config.map((group, gi) => (
-                  group.specs.map((spec, si) => (
-                    <tr key={`${gi}-${si}`} className={`border-b border-slate-100 last:border-b-0 ${si === 0 ? 'bg-slate-50' : 'bg-white'}`}>
-                      <td className="py-3 px-5 font-semibold text-slate-700 w-1/3 align-top">
-                        {si === 0 ? group.label : ''}
-                      </td>
-                      <td className="py-3 px-5 text-slate-600 align-top">
-                        <span className="font-medium text-slate-800">{spec.key}</span>
-                        {spec.value && <span className="text-slate-500">: {spec.value}</span>}
+                  <Fragment key={gi}>
+                    {/* Full-width Group Header Row */}
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <td colSpan={2} className="py-2.5 px-5 font-black text-slate-800 uppercase tracking-tight text-xs bg-slate-100/60">
+                        {group.label}
                       </td>
                     </tr>
-                  ))
+                    {/* Spec Items Rows under the header */}
+                    {group.specs.map((spec, si) => (
+                      <tr key={`${gi}-${si}`} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/30 transition-colors">
+                        <td className="py-3 px-5 font-semibold text-slate-700 w-1/3 align-top">
+                          {spec.key}
+                        </td>
+                        <td className="py-3 px-5 text-slate-600 align-top">
+                          {spec.value || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -328,6 +423,7 @@ function RatingBar({ label, count, total }) {
 }
 
 export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 0, ratingDistribution = {}, productId }) {
+  const { user } = useAuth()
   const SENTIMENT_COLORS = { positive: 'text-green-600 bg-green-50 border-green-200', negative: 'text-red-600 bg-red-50 border-red-200', neutral: 'text-slate-600 bg-slate-50 border-slate-200' }
   const SENTIMENT_LABEL  = {
     positive: (
@@ -411,7 +507,7 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
                   </div>
                   <div className="flex items-center gap-2 flex-none">
                     <StarRating rating={review.rating} size={14} />
-                    {review.sentiment && (
+                    {review.sentiment && (user?.is_staff || user?.is_superuser) && (
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${SENTIMENT_COLORS[review.sentiment] ?? ''}`}>
                         {SENTIMENT_LABEL[review.sentiment] ?? review.sentiment}
                       </span>

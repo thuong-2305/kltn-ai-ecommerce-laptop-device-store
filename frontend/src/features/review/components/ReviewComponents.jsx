@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../../contexts/AuthContext'
 import {
   Star, Package, CheckCircle2, AlertCircle, Upload, X,
   Plus, Loader2, Edit3, Shield, Lightbulb, Image, Phone, Mail, Check,
@@ -141,21 +142,17 @@ export function ImageUploader({ images, onAdd, onRemove }) {
 }
 
 /* ─── Review Form ────────────────────────────────────────────── */
-export function ReviewForm({ onSubmit, submitting, initial = null }) {
-  const [rating, setRating] = useState(initial?.rating || 0)
-  const [title, setTitle] = useState('')
-  const [comment, setComment] = useState(initial?.comment || '')
-  const [images, setImages] = useState([])
-  const [showName, setShowName] = useState(true)
+export function ReviewForm({ onSubmit, submitting }) {
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
   const [errors, setErrors] = useState({})
   const [toast, setToast] = useState(null)
 
   const validate = () => {
     const e = {}
     if (!rating) e.rating = 'Vui lòng chọn số sao'
-    if (!title.trim()) e.title = 'Vui lòng nhập tiêu đề'
-    if (!comment.trim()) e.comment = 'Vui lòng nhập nội dung'
-    else if (comment.length < 10) e.comment = 'Nội dung quá ngắn (tối thiểu 10 ký tự)'
+    if (!comment.trim()) e.comment = 'Vui lòng nhập nội dung bình luận'
+    else if (comment.length < 10) e.comment = 'Nội dung bình luận quá ngắn (tối thiểu 10 ký tự)'
     return e
   }
 
@@ -167,14 +164,7 @@ export function ReviewForm({ onSubmit, submitting, initial = null }) {
     
     const formData = new FormData()
     formData.append('rating', rating)
-    formData.append('title', title)
     formData.append('comment', comment)
-    formData.append('show_name', showName)
-    images.forEach(img => {
-      if (img.file) {
-        formData.append('images', img.file)
-      }
-    })
 
     const result = await onSubmit(formData)
     if (result.success) {
@@ -204,17 +194,10 @@ export function ReviewForm({ onSubmit, submitting, initial = null }) {
           </div>
         )}
 
-        {/* Already reviewed notice */}
-        {initial && (
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-sm text-blue-700 font-medium">
-            <CheckCircle2 size={16} /> Bạn đã đánh giá sản phẩm này. Có thể chỉnh sửa bên dưới.
-          </div>
-        )}
-
-        {/* 1. Rating */}
+        {/* Rating */}
         <div className="space-y-2">
           <label className="text-sm font-bold text-slate-800">
-            1. Đánh giá chung <span className="text-red-500">*</span>
+            Đánh giá chung <span className="text-red-500">*</span>
           </label>
           <StarInput value={rating} onChange={setRating} />
           {errors.rating && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.rating}</p>}
@@ -223,32 +206,15 @@ export function ReviewForm({ onSubmit, submitting, initial = null }) {
         {/* Divider */}
         <div className="border-t border-slate-100" />
 
-        {/* 2. Title */}
+        {/* Content */}
         <div className="space-y-1.5">
           <label className="text-sm font-bold text-slate-800">
-            2. Tiêu đề đánh giá <span className="text-red-500">*</span>
-          </label>
-          <div className={`relative rounded-xl border bg-white transition-all ${errors.title ? 'border-red-400' : 'border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100'}`}>
-            <input
-              type="text" maxLength={100}
-              placeholder="Hiệu năng mạnh mẽ, thiết kế đẹp!"
-              className="w-full h-11 px-4 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
-              value={title} onChange={e => setTitle(e.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">{title.length}/100</span>
-          </div>
-          {errors.title && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.title}</p>}
-        </div>
-
-        {/* 3. Content */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-bold text-slate-800">
-            3. Nội dung đánh giá <span className="text-red-500">*</span>
+            Nội dung bình luận <span className="text-red-500">*</span>
           </label>
           <div className={`relative rounded-xl border bg-white transition-all ${errors.comment ? 'border-red-400' : 'border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100'}`}>
             <textarea
               rows={4} maxLength={1000}
-              placeholder="Laptop chạy rất mượt, chơi game ổn định, màn hình đẹp và tản nhiệt tốt..."
+              placeholder="Nhập nội dung bình luận của bạn về sản phẩm này..."
               className="w-full px-4 pt-3 pb-8 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none resize-none"
               value={comment} onChange={e => setComment(e.target.value)}
             />
@@ -256,23 +222,6 @@ export function ReviewForm({ onSubmit, submitting, initial = null }) {
           </div>
           {errors.comment && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.comment}</p>}
         </div>
-
-        {/* 4. Images */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-slate-800">4. Hình ảnh / Video (tùy chọn)</label>
-          <ImageUploader images={images} onAdd={img => setImages(p => [...p, img])} onRemove={i => setImages(p => p.filter((_, idx) => idx !== i))} />
-        </div>
-
-        {/* Show name checkbox */}
-        <label className="flex items-center gap-2.5 cursor-pointer select-none">
-          <div
-            onClick={() => setShowName(v => !v)}
-            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${showName ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}
-          >
-            {showName && <Check size={10} className="text-white" strokeWidth={3} />}
-          </div>
-          <span className="text-sm text-slate-700">Hiển thị tên của tôi trên đánh giá này</span>
-        </label>
 
         {/* Submit */}
         <button
@@ -323,8 +272,19 @@ export function RatingOverview({ stats }) {
 
 /* ─── Single review card ─────────────────────────────────────── */
 export function ReviewCard({ review }) {
-  const [title, ...rest] = (review.comment || '').split('\n')
-  const body = rest.join('\n').trim()
+  const { user } = useAuth()
+  const commentStr = review.comment || ''
+  const hasNewline = commentStr.includes('\n')
+  
+  let title = ''
+  let body = commentStr
+  
+  if (hasNewline) {
+    const parts = commentStr.split('\n')
+    title = parts[0]
+    body = parts.slice(1).join('\n').trim()
+  }
+
   const [activeImage, setActiveImage] = useState(null)
 
   return (
@@ -353,7 +313,7 @@ export function ReviewCard({ review }) {
             </div>
           )}
 
-          {review.sentiment && (
+          {review.sentiment && (user?.is_staff || user?.is_superuser) && (
             <span className={`inline-flex items-center gap-1 mt-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
               review.sentiment === 'positive' ? 'bg-green-50 border-green-200 text-green-700' :
               review.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-700' :

@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('get-data/', views.get_data, name='get_data'),
+    path('shipping-fee/', views.api_calculate_shipping_fee, name='api_calculate_shipping_fee'),
     path('vnpay_checkout/', views.api_vnpay_checkout, name='vnpay_checkout'),
     path('vnpay_return/', views.api_vnpay_return, name='vnpay_return'),
     path('vnpay_ipn/', views.api_vnpay_ipn, name='vnpay_ipn'),
@@ -16,4 +17,5 @@ urlpatterns = [
     path('orders/history/', views.api_order_history, name='api_order_history'),
     path('orders/<str:pk>/detail/', views.api_order_detail, name='api_order_detail'),
     path('orders/<int:pk>/cancel/', views.api_order_cancel, name='api_order_cancel'),
+    path('ghn-webhook/', views.api_ghn_webhook, name='ghn_webhook'),
 ]

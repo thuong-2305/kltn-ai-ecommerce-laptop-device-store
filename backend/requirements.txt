@@ -9,6 +9,7 @@ whitenoise==6.7.0
 
 # Database
 mysqlclient==2.2.8
+psycopg2-binary==2.9.9
 
 # Image Processing
 pillow==11.0.0
@@ -31,12 +32,14 @@ pandas==2.2.0
 scikit-learn==1.6.0
 scipy==1.14.1
 
-# AI/ML - Image Similarity Search
+# AI/ML - Image Similarity Search & Sentiment Analysis
 torch==2.5.1
 torchvision==0.20.1
 torchaudio==2.5.1
 clip==1.0
 faiss-cpu==1.8.0
+transformers==4.40.0
+pyvi==0.1.1
 
 # Task Queue
 celery==5.4.0

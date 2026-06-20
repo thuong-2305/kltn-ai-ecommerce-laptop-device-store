@@ -48,6 +48,53 @@ def get_data(request):
         return JsonResponse({"error": "Failed to decode JSON"}, status=500)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+def api_calculate_shipping_fee(request):
+    """
+    Calculates shipping cost dynamically using GHN API based on selected address.
+    """
+    body = request.data or {}
+    province = body.get('province', '').strip()
+    ward = body.get('ward', '').strip()
+    shipping_method = body.get('shipping_method', 'normal') # 'normal' or 'express'
+    
+    if not province or not ward:
+        return Response({'error': 'Vui lòng chọn đầy đủ Tỉnh/Thành phố và Phường/Xã'}, status=400)
+
+    # 1. Resolve district_id and ward_code using mapping
+    from payment.ghn import ghn_mapping, calculate_ghn_shipping_cost, get_ghn_location_ids
+    mapping_key = f"{province}|{ward}"
+    mapping_data = ghn_mapping.get(mapping_key)
+    
+    if mapping_data:
+        district_id = mapping_data.get('district_id')
+        ward_code = mapping_data.get('ward_code')
+    else:
+        # Fallback to name matching
+        district_id, ward_code = get_ghn_location_ids(province, province, ward)
+        
+    # Service type mapping
+    service_type_id = 2 if shipping_method == 'normal' else 1 # GHN standard is 2, express is 1
+
+    # 2. Call GHN Fee API
+    fee = calculate_ghn_shipping_cost(
+        to_district_id=district_id,
+        to_ward_code=ward_code,
+        weight=2000,
+        service_type_id=service_type_id
+    )
+    
+    return Response({
+        'success': True,
+        'shipping_cost': fee,
+        'province': province,
+        'ward': ward,
+        'shipping_method': shipping_method
+    })
+
+
 def get_client_ip(request):
     return request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
 
@@ -241,12 +288,19 @@ def api_order_create(request):
                 })
 
             # 2. Create Order record
+            shipping_cost = body.get('shipping_cost')
+            if shipping_cost is not None:
+                try:
+                    shipping_cost = int(shipping_cost)
+                except (ValueError, TypeError):
+                    shipping_cost = None
+
             order = Order.objects.create(
                 user=user,
                 full_name=full_name,
                 phone=phone,
                 shipping_address=shipping_address,
-                amount_paid=cart.total_final()
+                amount_paid=cart.total_final(shipping_cost)
             )
 
             # 3. Create OrderItem records
@@ -669,3 +723,69 @@ def api_user_address_set_default(request, pk):
     address.is_default = True
     address.save()
     return Response({'success': True, 'message': 'Thiết lập địa chỉ mặc định thành công.'})
+
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([])
+@authentication_classes([])
+def api_ghn_webhook(request):
+    """
+    Exposed public webhook to receive delivery updates from GHN.
+    Payload parameters: OrderCode, Status, Time
+    """
+    payload = request.data or {}
+    logger.info(f"Received Giao Hang Nhanh (GHN) webhook event: {payload}")
+
+    ghn_order_code = payload.get('OrderCode')
+    ghn_status = payload.get('Status')
+
+    # Fallback support for other payload keys
+    if not ghn_order_code:
+        ghn_order_code = payload.get('order_code')
+    if not ghn_status:
+        ghn_status = payload.get('status')
+
+    if not ghn_order_code:
+        return Response({"error": "OrderCode is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Match order by GHN tracking code
+        order = Order.objects.get(shipping_tracking_code=ghn_order_code)
+        
+        # Check if GHN status represents a successful delivery
+        if ghn_status in ['delivered', 'delivered_ok', 'done', 'shipping_ok']:
+            order.status = 'delivered'
+            order.save()
+            logger.info(f"Order {order.order_code} successfully delivered via GHN.")
+
+            # Send real-time WebSocket notification to the user
+            try:
+                from asgiref.sync import async_to_sync
+                from channels.layers import get_channel_layer
+                channel_layer = get_channel_layer()
+                if channel_layer and order.user:
+                    group_name = f"user_{order.user.id}"
+                    async_to_sync(channel_layer.group_send)(
+                        group_name,
+                        {
+                            "type": "send_notification",
+                            "notification_type": "order_delivered",
+                            "message": f"Đơn hàng {order.order_code} đã được giao thành công!",
+                            "data": {
+                                "order_id": order.id,
+                                "order_code": order.order_code,
+                            }
+                        }
+                    )
+            except Exception as ne:
+                logger.error(f"Failed to send delivery WebSocket notification for order {order.order_code}: {ne}")
+
+        return Response({"success": True, "message": f"Status '{ghn_status}' processed for Order {order.order_code}"}, status=status.HTTP_200_OK)
+    
+    except Order.DoesNotExist:
+        logger.warning(f"GHN webhook tracking code {ghn_order_code} does not match any order.")
+        return Response({"error": "Order with specified tracking code not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.exception(f"Error handling GHN webhook: {e}")
+        return Response({"error": "Internal system error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -332,6 +332,23 @@ export function OrdersTab() {
                     >
                       {['shipping', 'confirmed'].includes(order.status) ? 'Theo dõi đơn hàng' : 'Xem chi tiết'}
                     </Link>
+                    {order.status === 'delivered' && (
+                      order.items && order.items.length === 1 ? (
+                        <Link 
+                          to={`/review/${order.items[0].product_id}?order=${order.order_code || order.id}`}
+                          className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-black transition-colors text-center block"
+                        >
+                          Đánh giá sản phẩm
+                        </Link>
+                      ) : (
+                        <Link 
+                          to={`/order-tracking/${order.order_code || order.id}`}
+                          className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-black transition-colors text-center block"
+                        >
+                          Đánh giá sản phẩm
+                        </Link>
+                      )
+                    )}
                     {order.status === 'pending' && (
                       <button 
                         onClick={() => handleCancelOrder(order.id)}

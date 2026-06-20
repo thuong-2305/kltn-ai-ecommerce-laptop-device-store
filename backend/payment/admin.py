@@ -21,6 +21,7 @@ class CustomAdminSite(AdminSite):
         reviews = Review.objects.all()
         total_reviews = reviews.count()
         positive_sentiment = reviews.filter(sentiment='positive').count()
+        neutral_sentiment = reviews.filter(sentiment='neutral').count()
         negative_sentiment = reviews.filter(sentiment='negative').count()
         spam_count = reviews.filter(is_spam=True).count()
 
@@ -59,6 +60,7 @@ class CustomAdminSite(AdminSite):
             'total_orders': total_orders,
             'total_reviews': total_reviews,
             'positive_sentiment': positive_sentiment,
+            'neutral_sentiment': neutral_sentiment,
             'negative_sentiment': negative_sentiment,
             'spam_count': spam_count,
             'revenue_labels': revenue_labels,
@@ -74,11 +76,12 @@ class OrderItemInline(admin.TabularInline):
     raw_id_fields = ('product', 'variant')
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('order_code', 'user', 'amount_paid', 'shipped', 'date_ordered')
-    list_filter = ('shipped', 'date_ordered')
-    search_fields = ('order_code', 'user__username', 'full_name')
+    list_select_related = ('user',)
+    list_display = ('order_code', 'user', 'amount_paid', 'status', 'shipping_tracking_code', 'shipped', 'date_ordered')
+    list_filter = ('status', 'shipped', 'date_ordered')
+    search_fields = ('order_code', 'user__username', 'full_name', 'shipping_tracking_code')
     readonly_fields = ['date_ordered', 'order_code']
-    fields = ['order_code', 'user', 'full_name', 'phone', 'shipping_address', 'amount_paid', 'date_ordered', 'shipped', 'date_shipped']
+    fields = ['order_code', 'user', 'full_name', 'phone', 'shipping_address', 'amount_paid', 'status', 'shipping_tracking_code', 'date_ordered', 'shipped', 'date_shipped']
     inlines = [OrderItemInline]
 
 # Register models to custom admin site

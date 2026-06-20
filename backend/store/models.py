@@ -131,7 +131,7 @@ class Review(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True, null=True)
-    sentiment = models.CharField(max_length=10, choices=[('positive', 'Positive'), ('negative', 'Negative')], null=True)
+    sentiment = models.CharField(max_length=10, choices=[('positive', 'Positive'), ('neutral', 'Neutral'), ('negative', 'Negative')], null=True)
     score_analysis = models.DecimalField(max_digits=6, decimal_places=5, null=True, editable=False)
     review_date = models.DateTimeField(default=timezone.now)
     is_spam = models.BooleanField(default=False)

@@ -49,6 +49,7 @@ export function AddressTab({ profile }) {
   
   const [errors, setErrors] = useState({})
 
+  const [allLocationData, setAllLocationData] = useState({})
   const [provincesList, setProvincesList] = useState([])
   const [wardList, setWardList] = useState([])
 
@@ -56,7 +57,9 @@ export function AddressTab({ profile }) {
     const fetchAddressData = async () => {
       try {
         const res = await axios.get('http://localhost:8000/api/payment/get-data/')
-        setProvincesList(res.data)
+        setAllLocationData(res.data)
+        const provinces = Object.keys(res.data)
+        setProvincesList(provinces)
       } catch (err) {
         console.error('Error fetching address data:', err)
       }
@@ -66,21 +69,15 @@ export function AddressTab({ profile }) {
 
   const handleProvinceChange = (e) => {
     const provName = e.target.value
-    const prov = provincesList.find(p => p.Name === provName)
-    const allWards = []
-    if (prov) {
-      for (const d of prov.Districts) {
-        allWards.push(...d.Wards)
-      }
-    }
-    const defaultWard = allWards[0]
+    const wards = allLocationData[provName] || []
+    const defaultWard = wards[0] || ''
 
     setForm(f => ({
       ...f,
       city: provName,
-      ward: defaultWard ? defaultWard.Name : ''
+      ward: defaultWard
     }))
-    setWardList(allWards)
+    setWardList(wards)
   }
 
   const handleWardChange = (e) => {
@@ -102,25 +99,20 @@ export function AddressTab({ profile }) {
   const handleOpenAdd = () => {
     setEditingAddress(null)
     
-    const defaultProv = provincesList.find(p => p.Name === 'Thành phố Hồ Chí Minh') || provincesList[0]
-    const allWards = []
-    if (defaultProv) {
-      for (const d of defaultProv.Districts) {
-        allWards.push(...d.Wards)
-      }
-    }
-    const defaultWard = allWards.find(w => w.Name === 'Phường Bến Nghé') || allWards[0]
+    const defaultProv = provincesList.includes('Thành phố Hồ Chí Minh') ? 'Thành phố Hồ Chí Minh' : provincesList[0]
+    const wards = allLocationData[defaultProv] || []
+    const defaultWard = wards.includes('Phường Bến Nghé') ? 'Phường Bến Nghé' : wards[0]
 
     setForm({
       name: profile?.user?.full_name || profile?.user?.username || '',
       phone: profile?.phone || profile?.user?.phone || '',
       street: '',
-      city: defaultProv ? defaultProv.Name : '',
-      ward: defaultWard ? defaultWard.Name : '',
+      city: defaultProv || '',
+      ward: defaultWard || '',
       type: 'home',
       isDefault: addresses.length === 0
     })
-    setWardList(allWards)
+    setWardList(wards)
     setErrors({})
     setIsModalOpen(true)
   }
@@ -137,15 +129,8 @@ export function AddressTab({ profile }) {
       isDefault: addr.isDefault
     })
     
-    const prov = provincesList.find(p => p.Name === addr.city)
-    const allWards = []
-    if (prov) {
-      for (const d of prov.Districts) {
-        allWards.push(...d.Wards)
-      }
-    }
-    
-    setWardList(allWards)
+    const wards = allLocationData[addr.city] || []
+    setWardList(wards)
     setErrors({})
     setIsModalOpen(true)
   }
@@ -429,7 +414,7 @@ export function AddressTab({ profile }) {
                       onChange={handleProvinceChange}
                     >
                       {provincesList.length > 0 ? (
-                        provincesList.map(p => <option key={p.Id} value={p.Name}>{p.Name}</option>)
+                        provincesList.map(p => <option key={p} value={p}>{p}</option>)
                       ) : (
                         <option value={form.city}>{form.city || 'Chọn tỉnh thành'}</option>
                       )}
@@ -447,7 +432,7 @@ export function AddressTab({ profile }) {
                       onChange={handleWardChange}
                     >
                       {wardList.length > 0 ? (
-                        wardList.map(w => <option key={w.Id} value={w.Name}>{w.Name}</option>)
+                        wardList.map(w => <option key={w} value={w}>{w}</option>)
                       ) : (
                         <option value={form.ward}>{form.ward || 'Chọn phường xã'}</option>
                       )}

@@ -151,8 +151,16 @@ def submit_review_api(request):
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Sản phẩm không tồn tại'}, status=404)
 
+    # Check if a review already exists for this user and product
+    if Review.objects.filter(user=user, product=product).exists():
+        return JsonResponse({'error': 'Bạn đã đánh giá sản phẩm này rồi và không thể chỉnh sửa.'}, status=400)
+
     # Combine title + comment
     full_comment = f"{title}\n{comment}".strip() if title else comment
+
+    # Run sentiment analysis using our model
+    from store.sentiment import SentimentAnalyzer
+    sentiment_label, confidence = SentimentAnalyzer.analyze(full_comment, rating=rating)
 
     # Upsert — one review per user per product
     review, created = Review.objects.update_or_create(
@@ -161,6 +169,8 @@ def submit_review_api(request):
         defaults={
             'rating': rating,
             'comment': full_comment,
+            'sentiment': sentiment_label,
+            'score_analysis': confidence,
             'review_date': timezone.now(),
             'is_spam': False,
         }
@@ -201,3 +211,179 @@ def my_review_api(request, pk):
         return JsonResponse({'review': _serialize_review(review)})
     except Review.DoesNotExist:
         return JsonResponse({'review': None})
+
+
+# ─── GET /api/store/admin/reviews/  ──────────────────────────────
+def admin_reviews_api(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Phương thức không hỗ trợ'}, status=405)
+
+    user, err = _get_user(request)
+    if err:
+        return err
+
+    # Require staff or superuser
+    if not (user.is_staff or user.is_superuser):
+        return JsonResponse({'error': 'Bạn không có quyền truy cập thông tin này'}, status=403)
+
+    # Fetch all reviews sorted by date
+    reviews = Review.objects.select_related('user', 'product').order_by('-review_date')
+    
+    serialized = []
+    for r in reviews:
+        serialized.append({
+            'id': r.id,
+            'user': r.user.get_full_name() or r.user.username,
+            'content': r.comment or '',
+            'rating': r.rating,
+            'product_id': r.product.id,
+            'target': r.product.name,
+            'sentiment': r.sentiment or 'neutral',
+            'time': r.review_date.strftime('%d/%m/%Y %H:%M') if r.review_date else '',
+            'status': 'spam' if r.is_spam else 'approved',
+        })
+
+    return JsonResponse({'reviews': serialized})
+
+
+# ─── GET /api/store/products/<pk>/sentiment-stats/  ──────────────
+def product_sentiment_stats_api(request, pk):
+    from django.db.models import Avg
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Phương thức không hỗ trợ'}, status=405)
+
+    user, err = _get_user(request)
+    if err:
+        return err
+
+    # Require staff or superuser
+    if not (user.is_staff or user.is_superuser):
+        return JsonResponse({'error': 'Bạn không có quyền truy cập thông tin này'}, status=403)
+
+    try:
+        product = Product.objects.get(pk=pk)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Sản phẩm không tồn tại'}, status=404)
+
+    reviews = Review.objects.filter(product=product, is_spam=False).order_by('-review_date')
+    total_reviews = reviews.count()
+
+    # Calculate sentiment distribution (Pie Chart)
+    positive_count = reviews.filter(sentiment='positive').count()
+    neutral_count = reviews.filter(sentiment='neutral').count()
+    negative_count = reviews.filter(sentiment='negative').count()
+
+    data_pie = [
+        {'name': 'Tích cực', 'value': positive_count, 'color': '#10B981'},
+        {'name': 'Trung tính', 'value': neutral_count, 'color': '#FBBF24'},
+        {'name': 'Tiêu cực', 'value': negative_count, 'color': '#EF4444'},
+    ]
+
+    # Calculate sentiment trends (Trend Line Chart over last 7 days)
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    data_trend = []
+    today = timezone.localtime(timezone.now()).date()
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_reviews = reviews.filter(review_date__date=day)
+        day_total = day_reviews.count()
+        if day_total > 0:
+            pos_pct = round((day_reviews.filter(sentiment='positive').count() / day_total) * 100)
+            neu_pct = round((day_reviews.filter(sentiment='neutral').count() / day_total) * 100)
+            neg_pct = round((day_reviews.filter(sentiment='negative').count() / day_total) * 100)
+        else:
+            pos_pct, neu_pct, neg_pct = 0, 0, 0
+            
+        data_trend.append({
+            'name': day.strftime('%d/%m'),
+            'pos': pos_pct,
+            'neu': neu_pct,
+            'neg': neg_pct,
+        })
+
+    # Aspect analysis
+    aspect_keywords = {
+        'Hiệu năng': ['mạnh', 'mượt', 'lag', 'chậm', 'hiệu năng', 'game', 'fps', 'cpu', 'ryzen', 'intel', 'core', 'card', 'ram', 'ssd', 'đồ họa'],
+        'Thiết kế': ['đẹp', 'xấu', 'thiết kế', 'mỏng', 'nhẹ', 'nhôm', 'vỏ', 'sang trọng', 'ngoại hình', 'chất liệu', 'bản lề'],
+        'Màn hình': ['màn hình', 'độ phân giải', 'tần số quét', 'ips', 'oled', 'màu', 'sắc nét', '2k', '4k', 'hz', 'độ sáng', 'tấm nền'],
+        'Tản nhiệt': ['nóng', 'quạt', 'tản nhiệt', 'ấm', 'nhiệt độ', 'cool', 'overheat'],
+        'Pin': ['pin', 'sạc', 'dung lượng', 'tiếng', 'giờ', 'battery', 'adapter'],
+        'Âm thanh': ['loa', 'âm thanh', 'volume', 'sound', 'nhạc', 'audio', 'bass'],
+        'Giá cả': ['giá', 'tiền', 'tầm giá', 'đắt', 'rẻ', 'phù hợp', 'tiết kiệm', 'chi phí', 'mắc']
+    }
+    
+    aspect_list = []
+    product_avg = round(float(reviews.aggregate(avg=Avg('rating'))['avg'] or 0.0), 1) if total_reviews > 0 else 4.0
+    
+    for name, keywords in aspect_keywords.items():
+        aspect_total_rating = 0
+        aspect_mention_count = 0
+        for r in reviews:
+            comment_lower = (r.comment or '').lower()
+            if any(kw in comment_lower for kw in keywords):
+                aspect_total_rating += r.rating
+                aspect_mention_count += 1
+                
+        score = round(aspect_total_rating / aspect_mention_count, 1) if aspect_mention_count > 0 else product_avg
+        aspect_list.append({
+            'name': name,
+            'score': score,
+            'count': aspect_mention_count,
+        })
+
+    # Extract keywords
+    positive_kws = ['mạnh', 'mượt', 'đẹp', 'nhẹ', 'tốt', 'mát', 'rẻ', 'hài lòng', 'ưng ý', 'sắc nét']
+    negative_kws = ['nóng', 'lag', 'yếu', 'chậm', 'đắt', 'mắc', 'ồn', 'tệ', 'lỗi', 'pin hụt']
+    
+    positive_keywords_list = []
+    negative_keywords_list = []
+    
+    for kw in positive_kws:
+        count = 0
+        for r in reviews:
+            if r.sentiment == 'positive' or r.rating >= 4:
+                if kw in (r.comment or '').lower():
+                    count += 1
+        if count > 0:
+            positive_keywords_list.append({'t': kw, 'c': count})
+            
+    for kw in negative_kws:
+        count = 0
+        for r in reviews:
+            if r.sentiment == 'negative' or r.rating <= 2:
+                if kw in (r.comment or '').lower():
+                    count += 1
+        if count > 0:
+            negative_keywords_list.append({'t': kw, 'c': count})
+
+    positive_keywords_list.sort(key=lambda x: x['c'], reverse=True)
+    negative_keywords_list.sort(key=lambda x: x['c'], reverse=True)
+
+    from store.views import _build_media_url
+    serialized_reviews = []
+    for r in reviews[:50]:
+        serialized_reviews.append(_serialize_review(r, request))
+
+    product_data = {
+        'id': product.id,
+        'name': product.name,
+        'image': _build_media_url(request, product.image) if product.image else None,
+        'price': product.sale_price or product.price or 0,
+        'category_name': product.category.name if product.category else 'Laptop',
+        'avg_rating': product_avg,
+        'total_reviews': total_reviews,
+    }
+
+    return JsonResponse({
+        'product': product_data,
+        'dataPie': data_pie,
+        'dataTrend': data_trend,
+        'aspects': aspect_list,
+        'positiveKeywords': positive_keywords_list[:5],
+        'negativeKeywords': negative_keywords_list[:5],
+        'reviews': serialized_reviews,
+        'total': total_reviews,
+    })
+

@@ -7,6 +7,8 @@ backend/.env
 backend/db.sqlite3
 backend/media/
 backend/staticfiles/
+backend/distilphobert_best/
+backend/logs/
 
 # ===== NODE / REACT =====
 frontend/node_modules/

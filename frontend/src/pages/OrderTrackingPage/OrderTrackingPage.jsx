@@ -269,6 +269,14 @@ function OrderTrackingPage() {
                           {item.variant_name && (
                             <p className="text-xs text-slate-400 mt-0.5">Phiên bản: {item.variant_name}</p>
                           )}
+                          {order.status === 'delivered' && (
+                            <Link 
+                              to={`/review/${item.product_id}?order=${order.order_code || order.id}`}
+                              className="inline-flex items-center gap-1 mt-1.5 text-xs font-black text-blue-650 hover:text-blue-800 transition-colors uppercase"
+                            >
+                              Đánh giá sản phẩm
+                            </Link>
+                          )}
                         </div>
                       </div>
                     </td>

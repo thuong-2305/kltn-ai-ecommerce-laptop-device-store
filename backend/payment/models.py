@@ -44,6 +44,7 @@ class Order(models.Model):
     amount_paid = models.DecimalField(max_digits=20, decimal_places=0)
     date_ordered = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    shipping_tracking_code = models.CharField(max_length=100, null=True, blank=True, db_index=True)
     shipped = models.BooleanField(default=False)
     is_paid = models.BooleanField(default=False, db_index=True)
     date_shipped = models.DateTimeField(blank=True, null=True)
@@ -77,6 +78,12 @@ def set_shipped_date_on_update(sender, instance, **kwargs):
             instance._old_is_paid = obj.is_paid
             instance._old_shipped = obj.shipped
             instance._old_status = obj.status
+            
+            # 1. Flag for automatic GHN order dispatch when order is confirmed by Admin
+            if instance.status == 'confirmed' and obj.status != 'confirmed':
+                instance._trigger_ghn_dispatch = True
+
+            # 2. Manual shipped flag update
             if instance.shipped and not obj.shipped:
                 instance.date_shipped = timezone.now()  # Use timezone-aware datetime
         except sender.DoesNotExist:
@@ -87,6 +94,36 @@ def set_shipped_date_on_update(sender, instance, **kwargs):
         instance._old_is_paid = False
         instance._old_shipped = False
         instance._old_status = 'pending'
+
+
+@receiver(post_save, sender=Order)
+def trigger_ghn_dispatch_post_save(sender, instance, created, **kwargs):
+    if getattr(instance, '_trigger_ghn_dispatch', False):
+        import threading
+        import sys
+        from django.db import transaction
+        
+        def run_dispatch():
+            from payment.ghn import create_ghn_shipping_order
+            try:
+                tracking_code = create_ghn_shipping_order(instance)
+                if tracking_code:
+                    # Fetch fresh instance to avoid overwriting other modifications
+                    order = sender.objects.get(pk=instance.pk)
+                    order.shipping_tracking_code = tracking_code
+                    order.status = 'shipping'
+                    order.shipped = True
+                    order.date_shipped = timezone.now()
+                    order.save()
+                    logger.info(f"Async GHN dispatch successful for order {order.order_code}. Tracking code: {tracking_code}")
+            except Exception as e:
+                logger.error(f"Async GHN dispatch failed for order {instance.order_code}: {e}", exc_info=True)
+
+        if 'test' in sys.argv:
+            run_dispatch()
+        else:
+            transaction.on_commit(lambda: threading.Thread(target=run_dispatch).start())
+
 
 
 @receiver(post_save, sender=Order)

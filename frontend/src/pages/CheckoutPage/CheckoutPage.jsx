@@ -65,8 +65,8 @@ function StepBar({ current }) {
 }
 
 /* ─── Order summary sidebar ──────────────────────────────────── */
-function OrderSidebar({ cart, promo, setPromo, discount, onApplyPromo }) {
-  const shipping = cart.shipping_cost || 0
+function OrderSidebar({ cart, promo, setPromo, discount, onApplyPromo, shippingCost }) {
+  const shipping = shippingCost !== null ? shippingCost : (cart.shipping_cost || 0)
   const subtotal = cart.subtotal || 0
   const total = subtotal + shipping - discount
 
@@ -84,7 +84,7 @@ function OrderSidebar({ cart, promo, setPromo, discount, onApplyPromo }) {
             <div key={item.product_id} className="flex items-center gap-3">
               <div className="w-14 h-14 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
                 {item.image
-                  ? <img src={`http://localhost:8000${item.image}`} alt={item.name} className="w-full h-full object-contain p-1" />
+                  ? <img src={item.image.startsWith('http') ? item.image : `http://localhost:8000${item.image}`} alt={item.name} className="w-full h-full object-contain p-1" />
                   : <Package size={20} className="text-slate-300" />
                 }
               </div>
@@ -218,6 +218,39 @@ function CheckoutPage() {
     shipping: 'standard', note: '',
   })
 
+  const [dynamicShippingCost, setDynamicShippingCost] = useState(20000)
+  const [feeLoading, setFeeLoading] = useState(false)
+
+  const fetchShippingFee = async (provinceName, wardName, method) => {
+    if (!provinceName || !wardName) return
+    setFeeLoading(true)
+    try {
+      const token = localStorage.getItem('ld_access')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      
+      const res = await axios.post('http://localhost:8000/api/payment/shipping-fee/', {
+        province: provinceName,
+        ward: wardName,
+        shipping_method: method === 'express' ? 'express' : 'normal'
+      }, { headers })
+      
+      if (res.data && res.data.success) {
+        setDynamicShippingCost(res.data.shipping_cost)
+      }
+    } catch (err) {
+      console.error('Failed to calculate shipping fee:', err)
+      setDynamicShippingCost(method === 'express' ? 50000 : 20000)
+    } finally {
+      setFeeLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (form.province && form.ward) {
+      fetchShippingFee(form.province, form.ward, form.shipping)
+    }
+  }, [form.province, form.ward, form.shipping])
+
   const set = k => e => {
     const val = e.target.value
     setForm(f => {
@@ -234,6 +267,7 @@ function CheckoutPage() {
     })
   }
 
+  const [allLocationData, setAllLocationData] = useState({})
   const [provincesList, setProvincesList] = useState([])
   const [wardList, setWardList] = useState([])
 
@@ -242,18 +276,17 @@ function CheckoutPage() {
       try {
         // 1. Tải danh sách đơn vị hành chính
         const res = await axios.get('http://localhost:8000/api/payment/get-data/')
-        setProvincesList(res.data)
+        setAllLocationData(res.data)
+        const provinces = Object.keys(res.data)
+        setProvincesList(provinces)
         
-        const defaultProv = res.data.find(p => p.Name === 'Thành phố Hồ Chí Minh') || res.data[0]
+        const defaultProv = provinces.includes('Thành phố Hồ Chí Minh') ? 'Thành phố Hồ Chí Minh' : provinces[0]
         let defaultWardName = 'Phường Bến Nghé'
         if (defaultProv) {
-          const allWards = []
-          for (const d of defaultProv.Districts) {
-            allWards.push(...d.Wards)
-          }
-          const defaultWard = allWards.find(w => w.Name === 'Phường Bến Nghé') || allWards[0]
-          defaultWardName = defaultWard ? defaultWard.Name : ''
-          setWardList(allWards)
+          const wards = res.data[defaultProv] || []
+          const defaultWard = wards.includes('Phường Bến Nghé') ? 'Phường Bến Nghé' : wards[0]
+          defaultWardName = defaultWard || ''
+          setWardList(wards)
         }
 
         // 2. Tải địa chỉ giao hàng của user nếu đã đăng nhập
@@ -289,7 +322,7 @@ function CheckoutPage() {
               const defaultAddr = addresses.find(a => a.isDefault) || addresses[0]
               setSelectedAddressId(defaultAddr.id)
 
-              let savedProvince = defaultAddr.city || (defaultProv ? defaultProv.Name : '')
+              let savedProvince = defaultAddr.city || defaultProv
               let savedWard = defaultAddr.ward || defaultWardName
 
               setForm(f => ({
@@ -304,27 +337,21 @@ function CheckoutPage() {
 
               // Cập nhật danh sách phường tương ứng với tỉnh thành đã chọn
               if (savedProvince) {
-                const matchedProv = res.data.find(p => p.Name === savedProvince)
-                if (matchedProv) {
-                  const matchedWards = []
-                  for (const d of matchedProv.Districts) {
-                    matchedWards.push(...d.Wards)
-                  }
-                  setWardList(matchedWards)
-                }
+                const matchedWards = res.data[savedProvince] || []
+                setWardList(matchedWards)
               }
             } else {
               // Nếu không có địa chỉ trong address book, dùng fallback từ shipping-address
               let specificAddress = legacyAddress
-              let savedProvince = defaultProv ? defaultProv.Name : ''
+              let savedProvince = defaultProv
               let savedWard = defaultWardName
 
               if (legacyAddress && legacyAddress.includes(',')) {
-                const parts = legacyAddress.split(', ')
+                const parts = legacyAddress.split(',').map(p => p.trim())
                 if (parts.length >= 3) {
                   specificAddress = parts.slice(0, parts.length - 2).join(', ').trim()
-                  savedWard = parts[parts.length - 2].trim()
-                  savedProvince = parts[parts.length - 1].trim()
+                  savedWard = parts[parts.length - 2]
+                  savedProvince = parts[parts.length - 1]
                 }
               }
 
@@ -339,28 +366,22 @@ function CheckoutPage() {
               }))
 
               if (savedProvince) {
-                const matchedProv = res.data.find(p => p.Name === savedProvince)
-                if (matchedProv) {
-                  const matchedWards = []
-                  for (const d of matchedProv.Districts) {
-                    matchedWards.push(...d.Wards)
-                  }
-                  setWardList(matchedWards)
-                }
+                const matchedWards = res.data[savedProvince] || []
+                setWardList(matchedWards)
               }
             }
           } catch (addrErr) {
             console.error('Error fetching addresses:', addrErr)
             setForm(f => ({
               ...f,
-              province: defaultProv ? defaultProv.Name : '',
+              province: defaultProv,
               ward: defaultWardName
             }))
           }
         } else {
           setForm(f => ({
             ...f,
-            province: defaultProv ? defaultProv.Name : '',
+            province: defaultProv,
             ward: defaultWardName
           }))
         }
@@ -373,15 +394,8 @@ function CheckoutPage() {
 
   const handleProvinceChange = (e) => {
     const provName = e.target.value
-    const prov = provincesList.find(p => p.Name === provName)
-    const allWards = []
-    if (prov) {
-      for (const d of prov.Districts) {
-        allWards.push(...d.Wards)
-      }
-    }
-    const defaultWard = allWards[0]
-    const defaultWardName = defaultWard ? defaultWard.Name : ''
+    const wards = allLocationData[provName] || []
+    const defaultWardName = wards[0] || ''
 
     setForm(f => {
       const newForm = {
@@ -399,7 +413,7 @@ function CheckoutPage() {
       setSelectedAddressId(matched ? matched.id : null)
       return newForm
     })
-    setWardList(allWards)
+    setWardList(wards)
   }
 
   const handleWardChange = (e) => {
@@ -421,13 +435,7 @@ function CheckoutPage() {
   const handleSelectAddress = (addr) => {
     setSelectedAddressId(addr.id)
     
-    const matchedProv = provincesList.find(p => p.Name === addr.city)
-    const matchedWards = []
-    if (matchedProv) {
-      for (const d of matchedProv.Districts) {
-        matchedWards.push(...d.Wards)
-      }
-    }
+    const matchedWards = allLocationData[addr.city] || []
     setWardList(matchedWards)
     
     setForm(f => ({
@@ -473,6 +481,7 @@ function CheckoutPage() {
         shipping_full_name: form.full_name.trim(),
         shipping_phone: form.phone.trim(),
         shipping_address: `${form.address.trim()}, ${form.ward}, ${form.province}`,
+        shipping_cost: dynamicShippingCost,
         payment_method: payment,
       }
       
@@ -504,7 +513,7 @@ function CheckoutPage() {
       }
 
       navigate(`/order-success/${orderId}`, {
-        state: { form, payment, cart: { ...cart }, discount, orderId }
+        state: { form, payment, cart: { ...cart, shipping_cost: dynamicShippingCost }, discount, orderId }
       })
     } catch (err) {
       setSubmitError(err.response?.data?.error || err.message || 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.')
@@ -626,16 +635,16 @@ function CheckoutPage() {
                 <Field label="Tỉnh / Thành phố" required error={errors.province}>
                   <select className={inputCls(false) + ' cursor-pointer'} value={form.province} onChange={handleProvinceChange}>
                     {provincesList.length > 0 ? (
-                      provincesList.map(p => <option key={p.Id} value={p.Name}>{p.Name}</option>)
+                      provincesList.map(p => <option key={p} value={p}>{p}</option>)
                     ) : (
-                      <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                      <option value="Thành phố Hồ Chí Minh">Thành phố Hồ Chí Minh</option>
                     )}
                   </select>
                 </Field>
                 <Field label="Phường / Xã" required error={errors.ward}>
                   <select className={inputCls(false) + ' cursor-pointer'} value={form.ward} onChange={handleWardChange}>
                     {wardList.length > 0 ? (
-                      wardList.map(w => <option key={w.Id} value={w.Name}>{w.Name}</option>)
+                      wardList.map(w => <option key={w} value={w}>{w}</option>)
                     ) : (
                       <option value="Phường Bến Nghé">Phường Bến Nghé</option>
                     )}
@@ -648,19 +657,24 @@ function CheckoutPage() {
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Phương thức giao hàng</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { id: 'standard', label: 'Giao hàng tiêu chuẩn (2-3 ngày)', price: 0 },
-                    { id: 'express',  label: 'Giao hàng nhanh (1-2 ngày)',       price: 30000 },
-                  ].map(s => (
-                    <label key={s.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all ${form.shipping === s.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                      <input type="radio" name="shipping" value={s.id} checked={form.shipping === s.id} onChange={set('shipping')} className="accent-blue-600" />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-slate-800">{s.label}</p>
-                      </div>
-                      <span className={`text-xs font-black ${s.price === 0 ? 'text-green-600' : 'text-slate-700'}`}>
-                        {s.price === 0 ? 'Miễn phí' : fmt(s.price)}
-                      </span>
-                    </label>
-                  ))}
+                    { id: 'standard', label: 'Giao hàng tiêu chuẩn (2-3 ngày)' },
+                    { id: 'express',  label: 'Giao hàng nhanh (1-2 ngày)' },
+                  ].map(s => {
+                    const isSelected = form.shipping === s.id
+                    return (
+                      <label key={s.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all ${form.shipping === s.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                        <input type="radio" name="shipping" value={s.id} checked={form.shipping === s.id} onChange={set('shipping')} className="accent-blue-600" />
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-slate-800">{s.label}</p>
+                        </div>
+                        {isSelected && (
+                          <span className="text-xs font-black text-slate-700">
+                            {feeLoading ? 'Đang tính...' : fmt(dynamicShippingCost)}
+                          </span>
+                        )}
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -697,7 +711,7 @@ function CheckoutPage() {
         </div>
 
         {/* ── RIGHT ───────────────────────────────────────────── */}
-        <OrderSidebar cart={cart} promo={promo} setPromo={setPromo} discount={discount} onApplyPromo={applyPromo} />
+        <OrderSidebar cart={cart} promo={promo} setPromo={setPromo} discount={discount} onApplyPromo={applyPromo} shippingCost={dynamicShippingCost} />
       </div>
 
       {/* Bottom actions */}

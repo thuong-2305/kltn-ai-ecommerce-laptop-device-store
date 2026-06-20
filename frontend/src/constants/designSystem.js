@@ -1,12 +1,10 @@
 /**
  * CENTRALIZED DESIGN SYSTEM CONSTANTS
  * Common semantic values and class references for components
- * Use these constants instead of hardcoding values in JSX
  */
 
 
 // ============= SEMANTIC CLASS REFERENCES =============
-// Use these as className values - no inline styles needed
 
 export const SEMANTIC_CLASSES = {
   // Text colors - semantic naming
@@ -50,9 +48,9 @@ export const SEMANTIC_CLASSES = {
     MD: 'rounded-md',
     LG: 'rounded-lg',
     XL: 'rounded-xl',
-    XXL: 'rounded-2xl', // standard card radius
+    XXL: 'rounded-2xl',
     XXXL: 'rounded-3xl',
-    FULL: 'rounded-full', // pill shape
+    FULL: 'rounded-full',
   },
 
   // Transitions
@@ -147,7 +145,6 @@ export const COLOR_ACCENTS = {
 }
 
 // ============= COMPOSITE STYLE OBJECTS =============
-// For when you need to pass multiple style properties
 
 export const COMMON_STYLES = {
   // Card with default styling
@@ -176,35 +173,3 @@ export const COMMON_STYLES = {
     className: 'flex min-h-13.5 items-center gap-3 rounded-2xl px-2.5 py-2 transition hover:-translate-x-1 hover:bg-blue-50 hover:shadow-[0_10px_22px_rgba(15,23,42,0.05)]',
   },
 }
-
-// ============= EXPORT REFERENCE GUIDE =============
-/*
-USAGE EXAMPLES:
-
-1. Text color (semantic):
-   <p className={SEMANTIC_CLASSES.TEXT.MUTED}>Secondary text</p>
-
-2. Button styling:
-   <button className={SEMANTIC_CLASSES.BUTTON.PRIMARY}>Click me</button>
-
-3. Card layout:
-   <div className={SEMANTIC_CLASSES.CARD.BASE}>Card content</div>
-
-4. Typography:
-   <h1 className={SEMANTIC_CLASSES.TYPOGRAPHY.TITLE_HERO}>Main title</h1>
-
-5. Common compositions:
-   <div className={COMMON_STYLES.card.className}>...</div>
-
-6. Spacing:
-   <section className={SPACING_DEFAULTS.MARGIN_SECTION}>...</section>
-
-7. Colors from tokens:
-   style={{ color: BRAND_COLORS.PRIMARY }}
-   style={{ backgroundColor: COLORS.BG_SURFACE }}
-
-8. Shadows from tokens:
-   style={{ boxShadow: SHADOWS.STANDARD }}
-
-All these are centralized here to ensure consistency across the app!
-*/

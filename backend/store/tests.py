@@ -362,6 +362,20 @@ class ReviewImageTests(APITestCase):
         self.assertEqual(len(payload['review']['images']), 2)
         self.assertTrue(payload['review']['images'][0].startswith('http://'))
 
+    def test_submit_duplicate_review_fails(self):
+        post_data = {
+            'product_id': self.product.id,
+            'rating': 5,
+            'comment': 'Sản phẩm dùng tốt',
+        }
+        res1 = self.client.post(self.submit_review_url, post_data)
+        self.assertEqual(res1.status_code, 201)
+
+        res2 = self.client.post(self.submit_review_url, post_data)
+        self.assertEqual(res2.status_code, 400)
+        self.assertEqual(res2.json()['error'], 'Bạn đã đánh giá sản phẩm này rồi và không thể chỉnh sửa.')
+
+
 
 class ImageSearchAPITests(APITestCase):
     def setUp(self):
@@ -413,3 +427,99 @@ class ImageSearchAPITests(APITestCase):
         # (either returning empty/fallback list or matching results) and not return a 500 error!
         self.assertEqual(response.status_code, 200)
         self.assertIn('product_ids', response.json())
+
+
+class SentimentAnalyzerTests(TestCase):
+    def test_sentiment_analyzer_prediction(self):
+        from store.sentiment import SentimentAnalyzer
+        
+        # Test positive review comment
+        sentiment, score = SentimentAnalyzer.analyze("Sản phẩm dùng rất tốt, tôi vô cùng hài lòng", rating=5)
+        self.assertEqual(sentiment, "positive")
+        self.assertGreater(score, 0.5)
+
+        # Test negative review comment
+        sentiment, score = SentimentAnalyzer.analyze("Sản phẩm tệ quá, dùng bị lag và nóng máy", rating=1)
+        self.assertEqual(sentiment, "negative")
+        self.assertGreater(score, 0.5)
+
+
+class AdminReviewsAndStatsAPITests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username='adminuser',
+            email='admin@example.com',
+            password='adminpassword'
+        )
+        self.customer = User.objects.create_user(
+            username='customeruser',
+            email='customer@example.com',
+            password='customerpassword'
+        )
+        self.category = Category.objects.create(name="Laptop Laptops")
+        self.brand = Brand.objects.create(name="Dell Tech")
+        self.product = Product.objects.create(
+            name="Dell Latitude",
+            price=15000000,
+            category=self.category,
+            brand=self.brand
+        )
+        self.r1 = Review.objects.create(
+            user=self.customer,
+            product=self.product,
+            rating=5,
+            comment="Sản phẩm rất đẹp và hiệu năng cực kỳ mạnh mẽ, chạy rất mượt",
+            sentiment="positive"
+        )
+        self.admin_token = str(RefreshToken.for_user(self.admin).access_token)
+        self.customer_token = str(RefreshToken.for_user(self.customer).access_token)
+        
+        self.admin_reviews_url = reverse('admin_reviews_api')
+        self.sentiment_stats_url = reverse('product_sentiment_stats_api', kwargs={'pk': self.product.id})
+
+    def test_admin_reviews_access_control(self):
+        # 1. Unauthenticated fails
+        res = self.client.get(self.admin_reviews_url)
+        self.assertEqual(res.status_code, 401)
+
+        # 2. Customer (non-staff) fails
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.customer_token}')
+        res = self.client.get(self.admin_reviews_url)
+        self.assertEqual(res.status_code, 403)
+
+        # 3. Admin succeeds
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.admin_token}')
+        res = self.client.get(self.admin_reviews_url)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()['reviews']), 1)
+        self.assertEqual(res.json()['reviews'][0]['target'], self.product.name)
+
+    def test_sentiment_stats_access_control_and_data(self):
+        # 1. Unauthenticated fails
+        res = self.client.get(self.sentiment_stats_url)
+        self.assertEqual(res.status_code, 401)
+
+        # 2. Customer fails
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.customer_token}')
+        res = self.client.get(self.sentiment_stats_url)
+        self.assertEqual(res.status_code, 403)
+
+        # 3. Admin succeeds
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.admin_token}')
+        res = self.client.get(self.sentiment_stats_url)
+        self.assertEqual(res.status_code, 200)
+        
+        payload = res.json()
+        self.assertEqual(payload['product']['name'], self.product.name)
+        aspects = {a['name']: a for a in payload['aspects']}
+        self.assertIn('Hiệu năng', aspects)
+        self.assertEqual(aspects['Hiệu năng']['count'], 1)
+        self.assertEqual(aspects['Hiệu năng']['score'], 5.0)
+        self.assertIn('Thiết kế', aspects)
+        self.assertEqual(aspects['Thiết kế']['count'], 1)
+        self.assertEqual(aspects['Thiết kế']['score'], 5.0)
+        self.assertIn('Pin', aspects)
+        self.assertEqual(aspects['Pin']['count'], 0)
+        self.assertEqual(aspects['Pin']['score'], 5.0)
+
+

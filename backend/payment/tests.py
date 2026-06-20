@@ -272,3 +272,72 @@ class VNPAYAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()['RspCode'], '04') # Invalid amount
 
+
+class GHNIntegrationTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='ghnuser',
+            email='ghnuser@example.com',
+            password='testpassword'
+        )
+        self.category = Category.objects.create(name='Electronics')
+        self.product = Product.objects.create(
+            name='Laptop Dell XPS 15',
+            price=35000000,
+            category=self.category
+        )
+        self.order = Order.objects.create(
+            user=self.user,
+            full_name='Nguyen Van GHN',
+            phone='0987654321',
+            shipping_address='789 Dien Bien Phu, Ward 22, Binh Thanh District, HCMC',
+            amount_paid=35000000,
+            is_paid=True
+        )
+        OrderItem.objects.create(
+            order=self.order,
+            product=self.product,
+            quantity=1,
+            price=35000000
+        )
+        self.webhook_url = reverse('ghn_webhook')
+
+    def test_order_confirmation_dispatches_to_ghn(self):
+        # Admin confirms the order (changes status to 'confirmed')
+        self.order.status = 'confirmed'
+        self.order.save()
+
+        # Refresh order from DB
+        self.order.refresh_from_db()
+
+        # Order should be automatically dispatched to GHN:
+        # 1. status changes to 'shipping'
+        # 2. shipped becomes True
+        # 3. tracking code is set
+        self.assertEqual(self.order.status, 'shipping')
+        self.assertTrue(self.order.shipped)
+        self.assertIsNotNone(self.order.shipping_tracking_code)
+        self.assertTrue(len(self.order.shipping_tracking_code) > 0)
+
+    def test_ghn_webhook_updates_status_to_delivered(self):
+        # Setup tracking code
+        tracking_code = 'GHN-TEST-123456'
+        self.order.shipping_tracking_code = tracking_code
+        self.order.status = 'shipping'
+        self.order.shipped = True
+        self.order.save()
+
+        # Send webhook from GHN
+        webhook_payload = {
+            'OrderCode': tracking_code,
+            'Status': 'delivered'
+        }
+        response = self.client.post(self.webhook_url, webhook_payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+
+        # Order should now be marked as delivered
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, 'delivered')
+
+

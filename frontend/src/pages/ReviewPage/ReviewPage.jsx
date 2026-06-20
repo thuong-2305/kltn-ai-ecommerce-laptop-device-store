@@ -16,7 +16,8 @@ function ReviewPage() {
   const { product, reviews, stats, existingReview, loading, submitting, error, submitReview } = useReview(productId)
 
   const handleSubmit = async (formData) => {
-    return await submitReview({ ...formData, product_id: Number(productId) })
+    formData.append('product_id', Number(productId))
+    return await submitReview(formData)
   }
 
   return (
@@ -71,8 +72,62 @@ function ReviewPage() {
             {/* Purchased product card */}
             <PurchasedProduct product={product} orderId={orderId} />
 
-            {/* Review form */}
-            <ReviewForm onSubmit={handleSubmit} submitting={submitting} initial={existingReview} />
+            {/* Review form / Already reviewed section */}
+            {existingReview ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-500">
+                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                  <h2 className="font-black text-slate-900 text-sm uppercase tracking-tight flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-green-600 animate-bounce" /> Đánh giá của bạn
+                  </h2>
+                  <span className="text-[10px] font-bold bg-green-50 border border-green-200 text-green-700 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    Đã hoàn thành
+                  </span>
+                </div>
+                <div className="p-6 space-y-5">
+                  <div className="flex items-start gap-2.5 px-4 py-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-sm text-blue-800 font-medium">
+                    <CheckCircle2 size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                    <span>Bạn đã gửi đánh giá cho sản phẩm này và không thể thay đổi nội dung.</span>
+                  </div>
+
+                  <div className="p-5 rounded-xl bg-slate-50/80 border border-slate-100 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Điểm đánh giá:</span>
+                      <div className="flex items-center gap-2">
+                        <StarDisplay value={existingReview.rating} size={18} />
+                        <span className="text-sm font-black text-slate-800">({existingReview.rating}/5 sao)</span>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t border-slate-200/60" />
+
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Bình luận của bạn:</span>
+                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line bg-white p-4 rounded-lg border border-slate-100 shadow-sm font-medium">
+                        {existingReview.comment}
+                      </p>
+                    </div>
+
+                    {existingReview.images && existingReview.images.length > 0 && (
+                      <>
+                        <div className="border-t border-slate-200/60" />
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Hình ảnh đính kèm:</span>
+                          <div className="flex gap-2.5 flex-wrap">
+                            {existingReview.images.map((url, i) => (
+                              <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm hover:border-blue-400 hover:scale-105 active:scale-95 transition-all cursor-zoom-in">
+                                <img src={url} alt="" className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <ReviewForm onSubmit={handleSubmit} submitting={submitting} />
+            )}
 
             {/* Existing reviews section */}
             {reviews.length > 0 && (

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from urllib.parse import urlparse
 from pathlib import Path
 from decouple import config
 import os
@@ -152,19 +153,20 @@ else:
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+db_url = config('DB_URL').replace('jdbc:', '')
+parsed = urlparse(db_url)
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': parsed.path.lstrip('/'),
         'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='3306'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        },
+        'PASSWORD': config('DB_PASS'),
+        'HOST': parsed.hostname,
+        'PORT': 5432,
     }
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -291,6 +293,11 @@ VNPAY_HASH_SECRET_KEY = config('VNPAY_HASH_SECRET_KEY')
 VNPAY_PAYMENT_URL = config('VNPAY_PAYMENT_URL', default='https://sandbox.vnpayment.vn/paymentv2/vpcpay.html')
 VNPAY_RETURN_URL = config('VNPAY_RETURN_URL', default='http://localhost:8000/api/payment/vnpay_return/')
 FRONTEND_PAYMENT_RESULT_URL = config('FRONTEND_PAYMENT_RESULT_URL', default='http://localhost:5173/payment/result')
+
+# GHN Configurations
+GHN_TOKEN = config('GHN_TOKEN', default='')
+GHN_SHOP_ID = config('GHN_SHOP_ID', default='')
+GHN_API_URL = config('GHN_API_URL', default='https://dev-online-gateway.ghn.vn/shiip/public-api/v2/')
 
 
 # ─── Logging Configuration ───────────────────────────────────────────────

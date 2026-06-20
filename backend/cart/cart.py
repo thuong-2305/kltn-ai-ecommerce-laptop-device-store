@@ -112,8 +112,9 @@ class Cart():
             return 20000
         return 100000
 
-    def total_final(self):
-        shipping_cost = self.get_shipping_cost(self.shipping_method)
+    def total_final(self, shipping_cost=None):
+        if shipping_cost is None:
+            shipping_cost = self.get_shipping_cost(self.shipping_method)
         return self.total() + shipping_cost
 
     def get_prods(self):
