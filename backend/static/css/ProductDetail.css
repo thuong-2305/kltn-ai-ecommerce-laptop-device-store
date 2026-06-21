@@ -1,0 +1,167 @@
+.icon-hover:hover {
+    background-color: white !important;
+    color: #3b71ca !important;
+}
+
+.icon-hover:hover i {
+    color: #3b71ca !important;
+}
+
+.btn:hover {
+    background-color: #688BB3;
+    color: white;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.btn {
+    background-color: #5874A5;
+    color: white;
+    border: none;
+}
+
+.content-limited {
+    max-height: 300px; /* Giới hạn chiều cao */
+    overflow: hidden;  /* Ẩn nội dung vượt quá chiều cao */
+    position: relative; /* Thiết lập vị trí tương đối */
+}
+
+.content-limited::after {
+    content: ""; /* Tạo một phần tử giả */
+    position: absolute; /* Đặt nó tuyệt đối trong khối cha */
+    bottom: 0; /* Đặt ở đáy của khối */
+    left: 0; /* Bắt đầu từ bên trái */
+    right: 0; /* Kéo dài đến bên phải */
+    height: 100px; /* Chiều cao của gradient */
+    background: linear-gradient(to bottom,transparent, white); /* Gradient từ trắng đến trong suốt */
+    pointer-events: none; /* Không cho phép tương tác với phần tử này */
+}
+
+.hidden {
+    display: none;     /* Ẩn nội dung khi không cần thiết */
+}
+
+#toggleContent {
+    display: block;              /* Hiển thị nút như một khối */
+    margin: 20px auto;          /* Căn giữa nút */
+    padding: 10px 20px;         /* Thêm khoảng cách bên trong */
+    background-color: transparent; /* Nền trong suốt */
+    color: blue;                /* Màu chữ xanh */
+    border: none;               /* Không có đường viền */
+    cursor: pointer;            /* Con trỏ khi di chuột là con trỏ bấm */
+    font-size: 16px;            /* Kích thước chữ */
+}
+
+.nav-link-1{
+    margin-top: 20px;
+    text-decoration: none;
+}
+
+.comment-list {
+    list-style-type: none; /* Loại bỏ chấm tròn */
+    padding: 0;
+    margin-top: 10px;
+}
+
+/* Khung thông báo */
+.notification {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 10px 20px;
+    background-color: #4caf50; /* Màu xanh lá */
+    color: white;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Hiển thị thông báo */
+.notification.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Ẩn thông báo */
+.notification.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* Thanh Breadcrumb  */
+.custom-breadcrumb {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "›"; 
+    color: #999;
+    padding-left: 10px;
+    padding-right: 18px;
+}
+
+.custom-breadcrumb li {
+    display: flex;
+    align-items: center;
+    color: #6c757d;
+}
+
+.custom-breadcrumb li a {
+    text-decoration: none;
+    color: #6c757d; 
+}
+
+.custom-breadcrumb li .highlight-category {
+    background-color: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Chức năng zoom ảnh khi hover */
+.zoom-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.zoom-image {
+  transition: transform 0.2s ease;
+  transform-origin: center center;
+}
+
+/* Thumnails image */
+.product-gallery {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.thumbnails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.thumbnails img {
+  width: 60px;
+  height: 60px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  object-fit: cover;
+  transition: border 0.2s ease;
+}
+
+.thumbnails img:hover,
+.thumbnails img.active {
+  border: 2px solid #000;
+}
+
+
+

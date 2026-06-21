@@ -1,13 +1,11 @@
-import axios from 'axios'
+import apiClient from './apiClient'
 
-const api = axios.create({
-  baseURL: 'http://localhost:8000/api/',
-})
-
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('access_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+const api = {
+  get: (url, config) => apiClient.get(`store/${url.replace(/^\//, '')}`, config),
+  post: (url, data, config) => apiClient.post(`store/${url.replace(/^\//, '')}`, data, config),
+  put: (url, data, config) => apiClient.put(`store/${url.replace(/^\//, '')}`, data, config),
+  patch: (url, data, config) => apiClient.patch(`store/${url.replace(/^\//, '')}`, data, config),
+  delete: (url, config) => apiClient.delete(`store/${url.replace(/^\//, '')}`, config),
+}
 
 export default api

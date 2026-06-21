@@ -1,0 +1,8 @@
+export { default as AboutPage } from './AboutPage'
+export { default as WarrantyPolicyPage } from './WarrantyPolicyPage'
+export { default as ShippingPolicyPage } from './ShippingPolicyPage'
+export { default as ReturnPolicyPage } from './ReturnPolicyPage'
+export { default as PrivacyPolicyPage } from './PrivacyPolicyPage'
+export { default as GuidePage } from './GuidePage'
+export { default as PaymentGuidePage } from './PaymentGuidePage'
+export { default as FaqsPage } from './FaqsPage'

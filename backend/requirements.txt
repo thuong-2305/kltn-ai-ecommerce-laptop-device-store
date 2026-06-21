@@ -1,59 +1,58 @@
+# Core Django & Web Framework
 asgiref==3.8.1
-audioread==3.0.1
-certifi==2024.8.30
-cffi==1.17.1
-charset-normalizer==3.4.0
-click==8.1.7
-colorama==0.4.6
-decorator==5.1.1
-distlib==0.3.9
 Django==5.1.2
 django-cors-headers==4.9.0
 django-jazzmin==3.0.1
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
-filelock==3.16.1
-fsspec==2024.10.0
-idna==3.10
-Jinja2==3.1.4
-joblib==1.4.2
-lazy_loader==0.4
-librosa==0.10.2.post1
-llvmlite==0.43.0
-MarkupSafe==3.0.2
-mpmath==1.3.0
-msgpack==1.1.0
+whitenoise==6.7.0
+
+# Database
 mysqlclient==2.2.8
-networkx==3.4.2
-nltk==3.9.1
-numba==0.60.0
-numpy==2.0.2
-packaging==24.1
+psycopg2-binary==2.9.9
+
+# Image Processing
 pillow==11.0.0
-pipenv==2024.2.0
-platformdirs==4.3.6
-pooch==1.8.2
-psycopg2-binary==2.9.11
-pycparser==2.22
-PyJWT==2.12.1
-python-crfsuite==0.9.11
+
+# Configuration & Security
 python-decouple==3.8
-PyYAML==6.0.2
-regex==2024.11.6
+PyJWT==2.12.1
+google-auth==2.29.0
+
+# HTTP & Networking
+certifi==2024.8.30
+charset-normalizer==3.4.0
+idna==3.10
 requests==2.32.3
+urllib3==2.2.3
+
+# Data Processing & Machine Learning
+numpy==2.0.2
+pandas==2.2.0
 scikit-learn==1.6.0
 scipy==1.14.1
-soundfile==0.12.1
-soxr==0.5.0.post1
-sqlparse==0.5.1
-sympy==1.13.1
-threadpoolctl==3.5.0
-torchaudio==2.5.1
+
+# AI/ML - Image Similarity Search & Sentiment Analysis
+torch==2.5.1
 torchvision==0.20.1
-tqdm==4.67.1
+torchaudio==2.5.1
+clip==1.0
+faiss-cpu==1.8.0
+transformers==4.40.0
+pyvi==0.1.1
+
+# Task Queue
+celery==5.4.0
+
+# Real-time WebSockets
+daphne==4.1.2
+channels==4.1.0
+
+# Dependencies (automatically installed by libraries)
+packaging==24.1
+sqlparse==0.5.1
 typing_extensions==4.12.2
 tzdata==2024.2
-underthesea==6.8.4
-underthesea_core==1.0.4
-urllib3==2.2.3
-virtualenv==20.27.0
+tqdm==4.67.1
+joblib==1.4.2
+threadpoolctl==3.5.0
