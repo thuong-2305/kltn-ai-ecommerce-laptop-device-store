@@ -17,7 +17,6 @@ Hệ thống thương mại điện tử bán laptop & phụ kiện công nghệ
 - [Tài khoản mẫu](#-tài-khoản-mẫu)
 - [API Endpoints chính](#-api-endpoints-chính)
 - [Công nghệ sử dụng](#-công-nghệ-sử-dụng)
-- [Xử lý sự cố](#-xử-lý-sự-cố)
 
 ---
 
@@ -29,10 +28,9 @@ Hệ thống thương mại điện tử bán laptop & phụ kiện công nghệ
 | **Node.js** | 18+ |
 | **npm** | 9+ |
 | **Git** | 2.30+ |
-| **RAM** | 8GB (khuyến nghị 16GB do model AI) |
+| **RAM** | 8GB |
 | **Dung lượng trống** | ~2GB |
 
-> **Lưu ý:** Dự án sử dụng **PostgreSQL** (Supabase cloud). Không cần cài DB cục bộ.
 
 ---
 
@@ -67,7 +65,7 @@ kltn-ai-ecommer/
 │   └── vite.config.js
 │
 ├── .gitignore
-└── README.md                   # 📖 File này
+└── README.md                  
 ```
 
 ---
@@ -105,15 +103,9 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-> ⚠️ **Lưu ý về PyTorch:** Nếu bạn có GPU NVIDIA và muốn chạy model AI nhanh hơn, cài PyTorch với CUDA:
-> ```bash
-> pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-> ```
-> Nếu không có GPU, phiên bản CPU mặc định trong `requirements.txt` vẫn hoạt động bình thường.
-
 #### 2.3 Tạo file `.env`
 
-Tạo file `backend/.env` với nội dung sau (liên hệ trưởng nhóm để lấy thông tin thực):
+Tạo file `backend/.env` với nội dung sau:
 
 ```env
 # ─── Database (PostgreSQL - Supabase) ───
@@ -154,7 +146,6 @@ mkdir media
 
 ```bash
 python manage.py migrate
-python manage.py createsuperuser
 ```
 
 ---
@@ -166,47 +157,6 @@ cd frontend
 npm install
 ```
 
-#### 3.1 Cấu hình API URL (nếu cần)
-
-File cấu hình API nằm ở `frontend/src/config/api.js`. Mặc định trỏ đến `http://localhost:8000`.
-
----
-
-### 4. Tải Model AI (`distilphobert_best`)
-
-> ⚠️ **QUAN TRỌNG:** Folder `distilphobert_best/` chứa model AI phân tích cảm xúc bình luận tiếng Việt (~370MB). Folder này **KHÔNG có trên Git** vì quá nặng.
-
-#### Cách lấy model:
-
-**Cách 1 — Copy từ máy đồng đội:**
-```
-Yêu cầu đồng đội gửi cho bạn toàn bộ folder `backend/distilphobert_best/`
-và đặt vào đúng vị trí: backend/distilphobert_best/
-```
-
-**Cách 2 — Tải từ Google Drive/Cloud (nếu có):**
-```
-Link tải: [Liên hệ trưởng nhóm để lấy link]
-Sau khi tải, giải nén vào: backend/distilphobert_best/
-```
-
-#### Cấu trúc folder model phải có đủ các file sau:
-
-```
-backend/distilphobert_best/
-├── added_tokens.json
-├── bpe.codes              (~1.1MB)
-├── config.json
-├── model.safetensors      (~370MB) ← File nặng nhất
-├── special_tokens_map.json
-├── tokenizer_config.json
-├── training_args.bin
-└── vocab.txt              (~895KB)
-```
-
-> **Nếu không có model:** Hệ thống vẫn chạy được bình thường. Chức năng phân tích cảm xúc sẽ tự động fallback sang phương pháp đơn giản dựa trên số sao đánh giá (không dùng AI).
-
----
 
 ## ▶️ Chạy dự án
 
@@ -219,8 +169,7 @@ venv\Scripts\activate          # Windows
 # source venv/bin/activate     # macOS/Linux
 python manage.py runserver
 ```
-→ Backend chạy tại: **http://localhost:8000**
-→ Trang quản trị: **http://localhost:8000/admin/**
+→ Trang quản trị: **http://127.0.0.1:8000/admin/**
 
 **Terminal 2 — Frontend (React):**
 ```bash
@@ -228,35 +177,6 @@ cd frontend
 npm run dev
 ```
 → Frontend chạy tại: **http://localhost:5173**
-
----
-
-## 👤 Tài khoản mẫu
-
-| Vai trò | Trang đăng nhập | Ghi chú |
-|---|---|---|
-| **Admin** | http://localhost:8000/admin/ | Dùng superuser đã tạo ở bước 2.5 |
-| **Khách hàng** | http://localhost:5173/login | Đăng ký tài khoản mới hoặc đăng nhập Google |
-
----
-
-## 📡 API Endpoints chính
-
-| Endpoint | Method | Mô tả |
-|---|---|---|
-| `/api/store/home/` | GET | Trang chủ (sản phẩm, danh mục, sale) |
-| `/api/store/products/` | GET | Danh sách sản phẩm (filter, sort, search) |
-| `/api/store/products/<id>/` | GET | Chi tiết sản phẩm |
-| `/api/store/products/search-by-image/` | POST | Tìm kiếm bằng hình ảnh (AI/CLIP) |
-| `/api/store/reviews/` | POST | Gửi đánh giá sản phẩm |
-| `/api/store/admin/reviews/` | GET | [Admin] Danh sách bình luận |
-| `/api/store/products/<id>/sentiment-stats/` | GET | [Admin] Thống kê cảm xúc |
-| `/api/auth/register/` | POST | Đăng ký tài khoản |
-| `/api/auth/login/` | POST | Đăng nhập (JWT) |
-| `/api/auth/google-login/` | POST | Đăng nhập Google OAuth |
-| `/api/cart/` | GET/POST | Giỏ hàng |
-| `/api/payment/create/` | POST | Tạo đơn hàng |
-| `/api/payment/vnpay/` | POST | Thanh toán VNPay |
 
 ---
 
@@ -286,58 +206,3 @@ npm run dev
 | Zustand | 5 | State management |
 | Recharts | 3.8 | Charts & analytics |
 | Lucide React | 1.16 | Icon library |
-
----
-
-## 🔧 Xử lý sự cố
-
-### ❌ `ModuleNotFoundError: No module named 'torch'`
-Model AI yêu cầu PyTorch. Cài đặt:
-```bash
-pip install torch torchvision torchaudio
-```
-
-### ❌ `NameError` hoặc lỗi liên quan đến `distilphobert_best`
-Folder model chưa được tải. Xem mục [4. Tải model AI](#4-tải-model-ai-distilphobert_best). Hệ thống vẫn hoạt động mà không cần model (fallback tự động).
-
-### ❌ `mysqlclient` cài không được trên Windows
-Tải bản prebuilt từ: https://www.lfd.uci.edu/~gohlke/pythonlibs/#mysqlclient
-Hoặc bỏ qua vì dự án dùng PostgreSQL (chỉ cần `psycopg2-binary`).
-
-### ❌ `npm install` bị lỗi trên Windows
-Thử xóa cache và cài lại:
-```bash
-npm cache clean --force
-Remove-Item -Recurse -Force node_modules
-npm install
-```
-
-### ❌ `CORS error` khi gọi API từ Frontend
-Kiểm tra backend `.env` có `CORS_ALLOWED_ORIGINS` bao gồm `http://localhost:5173`. Mặc định đã được cấu hình sẵn.
-
-### ❌ Frontend trắng trang / lỗi `useAuth`
-Đảm bảo `AuthProvider` bọc ngoài `App` trong `main.jsx`. Kiểm tra console browser để xem chi tiết lỗi.
-
----
-
-## 📂 Checklist sau khi Clone
-
-Đảm bảo bạn đã hoàn thành tất cả các bước:
-
-- [ ] Clone repository
-- [ ] Tạo virtual environment (`backend/venv/`)
-- [ ] Cài dependencies: `pip install -r requirements.txt`
-- [ ] Tạo file `backend/.env` (lấy thông tin từ trưởng nhóm)
-- [ ] Tạo folder `backend/logs/`
-- [ ] Tạo folder `backend/media/`
-- [ ] Copy folder `backend/distilphobert_best/` (tùy chọn, cho AI)
-- [ ] Chạy `python manage.py migrate`
-- [ ] Chạy `python manage.py createsuperuser`
-- [ ] Cài frontend: `cd frontend && npm install`
-- [ ] Chạy backend: `python manage.py runserver`
-- [ ] Chạy frontend: `npm run dev`
-- [ ] Truy cập http://localhost:5173 ✅
-
----
-
-> 📌 **Liên hệ:** Nếu gặp vấn đề, liên hệ trưởng nhóm để được hỗ trợ.
