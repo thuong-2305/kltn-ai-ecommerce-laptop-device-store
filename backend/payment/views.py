@@ -18,7 +18,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from cart.cart import Cart, parse_session_key
 from cart.models import CartItem as DbCartItem
-from payment.models import Order, ShippingAddress, OrderItem, UserAddress
+from payment.models import Order, ShippingAddress, OrderItem, UserAddress, Voucher
 from auth_api.models import Profile
 from store.models import Product, ProductVariant
 from .vnpay import VNPay
@@ -235,6 +235,41 @@ def api_vnpay_ipn(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @authentication_classes([JWTAuthentication])
+def api_validate_voucher(request):
+    """
+    API kiểm tra tính đúng đắn của mã giảm giá khi nhập từ frontend.
+    """
+    code = request.data.get('code', '').strip()
+    if not code:
+        return Response({'valid': False, 'error': 'Vui lòng cung cấp mã giảm giá.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    cart = Cart(request)
+    subtotal = cart.total()
+    
+    try:
+        voucher = Voucher.objects.get(code__iexact=code)
+        is_valid, error_msg = voucher.is_valid_for_checkout(request.user, subtotal)
+        if not is_valid:
+            return Response({'valid': False, 'error': error_msg}, status=status.HTTP_200_OK)
+            
+        discount = voucher.calculate_discount(subtotal)
+        return Response({
+            'valid': True,
+            'code': voucher.code,
+            'name': voucher.name,
+            'discount_type': voucher.discount_type,
+            'discount_value': float(voucher.discount_value),
+            'discount_amount': float(discount),
+            'min_order_value': float(voucher.min_order_value),
+            'max_discount_amount': float(voucher.max_discount_amount) if voucher.max_discount_amount else None
+        }, status=status.HTTP_200_OK)
+    except Voucher.DoesNotExist:
+        return Response({'valid': False, 'error': 'Mã giảm giá không tồn tại.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
 def api_order_create(request):
     user = request.user
     body = request.data or {}
@@ -242,6 +277,7 @@ def api_order_create(request):
     full_name = body.get('shipping_full_name', '').strip()
     phone = body.get('shipping_phone', '').strip()
     shipping_address = body.get('shipping_address', '').strip()
+    voucher_code = body.get('voucher_code', '').strip()
 
     if not full_name or not phone or not shipping_address:
         return Response({'error': 'Vui lòng cung cấp đầy đủ thông tin giao nhận'}, status=400)
@@ -250,6 +286,7 @@ def api_order_create(request):
     if len(cart) == 0:
         return Response({'error': 'Giỏ hàng của bạn đang trống'}, status=400)
 
+    from decimal import Decimal
     try:
         with transaction.atomic():
             # 1. Lock and validate stock for all items
@@ -287,23 +324,48 @@ def api_order_create(request):
                     'price': price
                 })
 
-            # 2. Create Order record
+            # 2. Lock and validate Voucher
+            voucher = None
+            discount_amount = Decimal(0)
+            if voucher_code:
+                try:
+                    voucher = Voucher.objects.select_for_update().get(code__iexact=voucher_code)
+                    subtotal = cart.total()
+                    is_valid, error_msg = voucher.is_valid_for_checkout(user, subtotal)
+                    if not is_valid:
+                        return Response({'error': f"Lỗi áp dụng voucher: {error_msg}"}, status=400)
+                    
+                    discount_amount = voucher.calculate_discount(subtotal)
+                    voucher.used_count += 1
+                    voucher.save()
+                except Voucher.DoesNotExist:
+                    return Response({'error': 'Mã giảm giá không hợp lệ hoặc đã bị xóa.'}, status=400)
+
+            # 3. Calculate amount paid
             shipping_cost = body.get('shipping_cost')
             if shipping_cost is not None:
                 try:
                     shipping_cost = int(shipping_cost)
                 except (ValueError, TypeError):
-                    shipping_cost = None
+                    shipping_cost = 0
+            else:
+                shipping_cost = 0
 
+            subtotal = cart.total()
+            amount_paid = max(Decimal(0), Decimal(subtotal) + Decimal(shipping_cost) - discount_amount)
+
+            # 4. Create Order record
             order = Order.objects.create(
                 user=user,
                 full_name=full_name,
                 phone=phone,
                 shipping_address=shipping_address,
-                amount_paid=cart.total_final(shipping_cost)
+                amount_paid=amount_paid,
+                voucher=voucher,
+                discount_amount=discount_amount
             )
 
-            # 3. Create OrderItem records
+            # 5. Create OrderItem records
             for item in items_to_create:
                 OrderItem.objects.create(
                     order=order,
@@ -314,19 +376,17 @@ def api_order_create(request):
                     price=item['price']
                 )
 
-            # 4. Clear cart database records
+            # 6. Clear cart database records
             DbCartItem.objects.filter(cart=cart.db_cart).delete()
 
-            # 5. Clear session cart
+            # 7. Clear session cart
             for k in list(request.session.keys()):
                 if k == 'session_key':
                     del request.session[k]
             if 'shipping_method' in request.session:
                 del request.session['shipping_method']
 
-            # 6. Clear legacy profile cart (No-op: old_cart removed)
-
-            # 7. Update user profile, default shipping address, and address book if not set
+            # 8. Update user profile, default shipping address, and address book if not set
             try:
                 # Update user names and phone
                 user_updated = False

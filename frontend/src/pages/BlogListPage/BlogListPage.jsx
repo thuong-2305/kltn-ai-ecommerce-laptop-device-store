@@ -93,12 +93,12 @@ export default function BlogListPage() {
         <nav className="mb-6 flex items-center gap-1.5 text-sm">
           <Link to="/" className="text-slate-500 hover:text-blue-600 transition-colors font-medium">Trang chủ</Link>
           <ChevronRight size={14} className="text-slate-300" />
-          <span className="text-slate-900 font-semibold">Tin tức & TechZone Blog</span>
+          <span className="text-slate-900 font-semibold">Tin tức & LaptopDevice Blog</span>
         </nav>
         
         {/* Header & Categories */}
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">TechZone <span className="text-blue-600">Blog</span></h1>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">LaptopDevice <span className="text-blue-600">Blog</span></h1>
           <p className="text-slate-500 text-base mb-8">Cập nhật những tin tức công nghệ mới nhất, đánh giá chuyên sâu và thủ thuật hữu ích dành cho tín đồ yêu công nghệ.</p>
           
           <div className="flex flex-wrap items-center justify-center gap-2">

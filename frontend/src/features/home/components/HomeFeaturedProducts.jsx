@@ -108,7 +108,7 @@ function HomeFeaturedProducts({ tabs = [], activeTabId, onSelectTab, products = 
       {/* Head */}
       <div className="flex items-center justify-between gap-4 rounded-xxl bg-white/80 px-4.5 py-3.5 shadow-standard">
         <div className='flex items-center justify-center gap-5'>
-          <h1 className="text-3xl font-extrabold text-title text-slate-900">SẢN PHẨM NỔI BẬC</h1>
+          <h1 className="text-3xl font-extrabold text-title text-slate-900">SẢN PHẨM MỚI</h1>
       
           <div className="flex flex-wrap gap-2.5">
             {tabs.map((tab) => (

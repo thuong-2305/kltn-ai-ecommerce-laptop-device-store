@@ -36,6 +36,17 @@ class Cart():
         quantity = int(quantity)
         variant_id = variant.id if variant else None
         
+        # Check stock validation
+        check_variant = variant
+        if not check_variant:
+            check_variant = product.variants.first()
+            
+        if check_variant:
+            if check_variant.stock <= 0:
+                raise ValueError("Sản phẩm hiện đang tạm hết hàng!")
+            if check_variant.stock < quantity:
+                raise ValueError(f"Không đủ số lượng trong kho (chỉ còn {check_variant.stock} sản phẩm)!")
+        
         if self.request.user.is_authenticated:
             # Check if item exists in DB cart
             exists = CartItem.objects.filter(
@@ -64,6 +75,7 @@ class Cart():
             self.cart[key] = quantity
             self.session.modified = True
             return "Thêm vào giỏ hàng thành công"
+
 
 
 
@@ -138,6 +150,23 @@ class Cart():
         product_id = product.id if isinstance(product, Product) else int(product)
         quantity = int(quantity)
 
+        # Validate stock limits
+        if variant_id:
+            try:
+                variant = ProductVariant.objects.get(id=variant_id)
+                if variant.stock < quantity:
+                    quantity = max(0, variant.stock)
+            except ProductVariant.DoesNotExist:
+                pass
+        else:
+            try:
+                product_obj = Product.objects.get(id=product_id)
+                variant = product_obj.variants.first()
+                if variant and variant.stock < quantity:
+                    quantity = max(0, variant.stock)
+            except Product.DoesNotExist:
+                pass
+
         if self.request.user.is_authenticated:
             CartItem.objects.filter(
                 cart=self.db_cart,
@@ -151,6 +180,7 @@ class Cart():
             key = make_session_key(product_id, variant_id)
             self.cart[key] = quantity
             self.session.modified = True
+
 
         return self.cart
 

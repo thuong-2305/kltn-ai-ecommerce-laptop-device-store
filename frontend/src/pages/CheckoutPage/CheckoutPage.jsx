@@ -204,6 +204,8 @@ function CheckoutPage() {
   const [step] = useState(2)
   const [promo, setPromo] = useState('')
   const [discount, setDiscount] = useState(0)
+  const [voucherApplied, setVoucherApplied] = useState(null)
+  const [promoError, setPromoError] = useState('')
   const [payment, setPayment] = useState('cod')
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -457,14 +459,58 @@ function CheckoutPage() {
     return e
   }
 
-  const applyPromo = () => {
-    if (promo.toUpperCase() === 'SAVE10') {
-      setDiscount(Math.round((cart.subtotal || 0) * 0.1))
-    } else {
+  const applyPromo = async () => {
+    if (!promo.trim()) {
+      setVoucherApplied(null)
       setDiscount(0)
-      alert('Mã giảm giá không hợp lệ')
+      return
+    }
+    setPromoError('')
+    try {
+      const token = localStorage.getItem('ld_access')
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      
+      const res = await axios.post('http://localhost:8000/api/payment/validate-voucher/', {
+        code: promo.trim()
+      }, { headers })
+      
+      if (res.data.valid) {
+        setVoucherApplied(res.data)
+        setDiscount(res.data.discount_amount)
+      } else {
+        setVoucherApplied(null)
+        setDiscount(0)
+        setPromoError(res.data.error || 'Mã giảm giá không hợp lệ')
+        alert(res.data.error || 'Mã giảm giá không hợp lệ')
+      }
+    } catch (err) {
+      console.error('Validate voucher failed:', err)
+      alert(err.response?.data?.error || 'Không thể xác thực mã giảm giá lúc này.')
     }
   }
+
+  useEffect(() => {
+    if (voucherApplied && cart.subtotal) {
+      let newDiscount = 0
+      if (voucherApplied.discount_type === 'percentage') {
+        newDiscount = Math.round(cart.subtotal * (voucherApplied.discount_value / 100))
+        if (voucherApplied.max_discount_amount) {
+          newDiscount = Math.min(newDiscount, voucherApplied.max_discount_amount)
+        }
+      } else {
+        newDiscount = voucherApplied.discount_value
+      }
+      
+      if (voucherApplied.min_order_value && cart.subtotal < voucherApplied.min_order_value) {
+        setVoucherApplied(null)
+        setDiscount(0)
+        setPromo('')
+        alert('Đơn hàng không còn đủ giá trị tối thiểu để áp dụng mã giảm giá này.')
+      } else {
+        setDiscount(Math.min(newDiscount, cart.subtotal))
+      }
+    }
+  }, [cart.subtotal, voucherApplied])
 
   const handleSubmit = async () => {
     const errs = validate()
@@ -483,6 +529,7 @@ function CheckoutPage() {
         shipping_address: `${form.address.trim()}, ${form.ward}, ${form.province}`,
         shipping_cost: dynamicShippingCost,
         payment_method: payment,
+        voucher_code: voucherApplied ? voucherApplied.code : '',
       }
       
       const res = await axios.post('http://localhost:8000/api/payment/orders/create/', payload, {

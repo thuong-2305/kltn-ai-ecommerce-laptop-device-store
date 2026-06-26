@@ -46,7 +46,7 @@ export default function StaticLayout({ title, children }) {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
             <h4 className="font-black text-slate-900 text-sm uppercase tracking-tight">Cần hỗ trợ thêm?</h4>
             <p className="text-xs text-slate-500 leading-relaxed flex items-center gap-1">
-              Đội ngũ TechZone luôn sẵn sàng hỗ trợ bạn 24/7
+              Đội ngũ LaptopDevice luôn sẵn sàng hỗ trợ bạn 24/7
               <Zap size={13} className="text-amber-500 fill-amber-500 shrink-0" />
             </p>
             
@@ -61,7 +61,7 @@ export default function StaticLayout({ title, children }) {
               <div className="flex items-start gap-3">
                 <Mail size={16} className="text-blue-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-slate-800">Email: support@techzone.vn</p>
+                  <p className="text-xs font-bold text-slate-800">Email: support@laptopdevice.vn</p>
                   <p className="text-[10px] text-slate-500">Phản hồi trong 30 phút</p>
                 </div>
               </div>

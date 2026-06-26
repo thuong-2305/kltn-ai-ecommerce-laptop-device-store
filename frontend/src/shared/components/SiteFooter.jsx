@@ -64,7 +64,7 @@ function SiteFooter() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Theo dõi TechZone trên ${social.label}`}
+                aria-label={`Theo dõi LaptopDevice trên ${social.label}`}
                 className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-all duration-300 shadow-sm"
               >
                 <social.icon />

@@ -85,10 +85,26 @@ class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     phone = serializers.CharField(source='user.phone', read_only=True)
     address = serializers.CharField(required=False, allow_blank=True)
+    order_count = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    voucher_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ('id', 'user', 'phone', 'address', 'date_modified')
+        fields = ('id', 'user', 'phone', 'address', 'date_modified', 'order_count', 'review_count', 'voucher_count')
+
+    def get_order_count(self, obj):
+        from payment.models import Order
+        return Order.objects.filter(user=obj.user).count()
+
+    def get_review_count(self, obj):
+        from store.models import Review
+        return Review.objects.filter(user=obj.user).count()
+
+    def get_voucher_count(self, obj):
+        from django.utils import timezone
+        from payment.models import Voucher
+        return Voucher.objects.filter(is_active=True, end_date__gt=timezone.now()).count()
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

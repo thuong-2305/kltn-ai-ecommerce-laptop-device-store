@@ -118,7 +118,7 @@ export default function GuidePage() {
     {
       n: 6,
       title: 'Nhận hàng',
-      desc: 'TechZone xác nhận đơn hàng và giao hàng đến bạn nhanh chóng.',
+      desc: 'LaptopDevice xác nhận đơn hàng và giao hàng đến bạn nhanh chóng.',
       svg: ShippingSvg,
     },
   ]
@@ -130,11 +130,11 @@ export default function GuidePage() {
     },
     {
       q: 'Thời gian giao hàng dự kiến là bao lâu?',
-      a: 'Thời gian giao hàng tiêu chuẩn dao động từ 2-4 ngày làm việc trên toàn quốc. Đối với đơn hàng nội thành TP. HCM và Hà Nội, TechZone hỗ trợ giao hàng hỏa tốc trong vòng 1-2 giờ hoặc nhận trực tiếp tại cửa hàng gần nhất.',
+      a: 'Thời gian giao hàng tiêu chuẩn dao động từ 2-4 ngày làm việc trên toàn quốc. Đối với đơn hàng nội thành TP. HCM và Hà Nội, LaptopDevice hỗ trợ giao hàng hỏa tốc trong vòng 1-2 giờ hoặc nhận trực tiếp tại cửa hàng gần nhất.',
     },
     {
       q: 'Tôi có được kiểm tra hàng trước khi thanh toán không?',
-      a: 'Tất cả sản phẩm bán ra bởi TechZone đều hỗ trợ chính sách "Đồng kiểm khi nhận hàng". Bạn được quyền mở niêm phong hộp của hãng để đối chiếu mã máy, phụ kiện đi kèm và trạng thái ngoại quan của máy trước khi hoàn tất ký nhận hoặc trả tiền.',
+      a: 'Tất cả sản phẩm bán ra bởi LaptopDevice đều hỗ trợ chính sách "Đồng kiểm khi nhận hàng". Bạn được quyền mở niêm phong hộp của hãng để đối chiếu mã máy, phụ kiện đi kèm và trạng thái ngoại quan của máy trước khi hoàn tất ký nhận hoặc trả tiền.',
     },
   ]
 
@@ -154,7 +154,7 @@ export default function GuidePage() {
         <div className="relative z-10 flex-1 text-center md:text-left">
           <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-2 uppercase">Hướng dẫn mua hàng</h2>
           <p className="text-slate-500 text-sm md:text-base max-w-xl">
-            Quy trình mua hàng đơn giản, nhanh chóng và an toàn tại TechZone giúp bạn sở hữu sản phẩm công nghệ mơ ước chỉ trong vài bước.
+            Quy trình mua hàng đơn giản, nhanh chóng và an toàn tại LaptopDevice giúp bạn sở hữu sản phẩm công nghệ mơ ước chỉ trong vài bước.
           </p>
         </div>
         <div className="relative z-10 w-28 h-28 md:w-36 md:h-36 flex-none bg-blue-100 rounded-full flex items-center justify-center shadow-inner">
@@ -164,9 +164,9 @@ export default function GuidePage() {
         </div>
       </div>
 
-      {/* ── Quy trình mua hàng tại TechZone (Diagram) ── */}
+      {/* ── Quy trình mua hàng tại LaptopDevice (Diagram) ── */}
       <div className="mb-12">
-        <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-6 border-l-4 border-blue-600 pl-3">Quy trình mua hàng tại TechZone</h3>
+        <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-6 border-l-4 border-blue-600 pl-3">Quy trình mua hàng tại LaptopDevice</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5 lg:gap-3.5 items-stretch relative">
           {steps.map((step, idx) => {
@@ -212,7 +212,7 @@ export default function GuidePage() {
             { n: '2. Thêm vào giỏ hàng', text: 'Sau khi đã chọn sản phẩm ưng ý, bạn click vào nút "Thêm vào giỏ hàng" để tiếp tục xem thêm các linh kiện phụ kiện đi kèm hoặc click nút "Mua ngay" để trực tiếp chuyển hướng đến trang giỏ hàng và thanh toán.', svg: AddToCartSvg },
             { n: '3. Kiểm tra thông tin giỏ hàng', text: 'Tại trang giỏ hàng, bạn có thể kiểm tra danh sách sản phẩm, điều chỉnh số lượng mua, nhập mã giảm giá (nếu có) để hưởng ưu đãi. Xem lại tổng thành tiền tạm tính và bấm chọn "Tiến hành thanh toán".', svg: CheckCartSvg },
             { n: '4. Nhập thông tin giao hàng', text: 'Vui lòng cung cấp đầy đủ và chính xác thông tin nhận hàng bao gồm: Họ tên người nhận, số điện thoại liên lạc, địa chỉ cụ thể (số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố) để đảm bảo bưu tá giao hàng chính xác.', svg: EnterInfoSvg },
-            { n: '5. Thanh toán đơn hàng', text: 'TechZone hỗ trợ đa dạng phương thức thanh toán an toàn bao gồm: COD (giao hàng nhận tiền mặt), Chuyển khoản ngân hàng trực tiếp qua mã QR, Thẻ ATM/Internet Banking, Thẻ quốc tế Visa/MasterCard hoặc các ví điện tử Momo/Zalopay.', svg: PaymentSvg },
+            { n: '5. Thanh toán đơn hàng', text: 'LaptopDevice hỗ trợ đa dạng phương thức thanh toán an toàn bao gồm: COD (giao hàng nhận tiền mặt), Chuyển khoản ngân hàng trực tiếp qua mã QR, Thẻ ATM/Internet Banking, Thẻ quốc tế Visa/MasterCard hoặc các ví điện tử Momo/Zalopay.', svg: PaymentSvg },
             { n: '6. Nhận hàng và đồng kiểm', text: 'Đơn hàng sẽ được nhân viên hỗ trợ gọi điện xác nhận trong 15 phút. Khi bưu tá bàn giao hàng, bạn có quyền mở hộp ngoài để đồng kiểm ngoại quan sản phẩm cùng bưu tá. Nếu sản phẩm khớp thông tin và nguyên vẹn, bạn tiến hành ký nhận hàng.', svg: ShippingSvg }
           ].map((item, idx) => {
             const SvgIllust = item.svg
@@ -239,12 +239,12 @@ export default function GuidePage() {
         </div>
       </div>
 
-      {/* ── Vì sao nên mua hàng tại TechZone? ── */}
+      {/* ── Vì sao nên mua hàng tại LaptopDevice? ── */}
       <div className="mb-12 bg-gradient-to-br from-blue-900 via-indigo-950 to-slate-950 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden border border-blue-800/30">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 mix-blend-overlay" />
         <div className="absolute top-[-50px] right-[-50px] w-64 h-64 rounded-full bg-blue-500/10 blur-3xl" />
         
-        <h3 className="relative z-10 text-center font-black text-sm uppercase tracking-widest text-blue-300 mb-6">Vì sao nên mua hàng tại TechZone?</h3>
+        <h3 className="relative z-10 text-center font-black text-sm uppercase tracking-widest text-blue-300 mb-6">Vì sao nên mua hàng tại LaptopDevice?</h3>
         
         <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 text-center items-start">
           {features.map((feature, idx) => {
@@ -304,14 +304,14 @@ export default function GuidePage() {
           
           <div className="space-y-4">
             {[
-              { title: 'Hướng dẫn thanh toán tại TechZone', desc: 'Các phương thức thanh toán và lưu ý quan trọng.', path: '/payment-guide', gradient: 'from-orange-500 to-amber-400' },
-              { title: 'Chính sách giao hàng của TechZone', desc: 'Thông tin chi tiết về phí và thời gian giao hàng.', path: '/shipping-policy', gradient: 'from-blue-600 to-cyan-500' },
-              { title: 'Chính sách đổi trả hàng tại TechZone', desc: 'Quy định và điều kiện đổi trả linh hoạt.', path: '/return-policy', gradient: 'from-emerald-600 to-teal-400' }
+              { title: 'Hướng dẫn thanh toán tại LaptopDevice', desc: 'Các phương thức thanh toán và lưu ý quan trọng.', path: '/payment-guide', gradient: 'from-orange-500 to-amber-400' },
+              { title: 'Chính sách giao hàng của LaptopDevice', desc: 'Thông tin chi tiết về phí và thời gian giao hàng.', path: '/shipping-policy', gradient: 'from-blue-600 to-cyan-500' },
+              { title: 'Chính sách đổi trả hàng tại LaptopDevice', desc: 'Quy định và điều kiện đổi trả linh hoạt.', path: '/return-policy', gradient: 'from-emerald-600 to-teal-400' }
             ].map((article, idx) => (
               <Link key={idx} to={article.path} className="flex gap-4 p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:shadow-sm transition-all duration-300 group">
                 {/* Card thumbnail representation */}
                 <div className={`w-16 h-12 rounded-lg bg-gradient-to-br ${article.gradient} flex items-center justify-center text-white shrink-0 shadow-sm font-black text-lg select-none`}>
-                  TZ
+                  LD
                 </div>
                 <div className="min-w-0 flex-1 flex flex-col justify-center">
                   <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 leading-snug">{article.title}</h4>

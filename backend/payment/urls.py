@@ -12,6 +12,7 @@ urlpatterns = [
     path('addresses/<int:pk>/', views.api_user_address_detail, name='api_user_address_detail'),
     path('addresses/<int:pk>/set-default/', views.api_user_address_set_default, name='api_user_address_set_default'),
 
+    path('validate-voucher/', views.api_validate_voucher, name='api_validate_voucher'),
     # Order APIs
     path('orders/create/', views.api_order_create, name='api_order_create'),
     path('orders/history/', views.api_order_history, name='api_order_history'),

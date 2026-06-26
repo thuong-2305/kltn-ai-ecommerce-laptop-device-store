@@ -6,16 +6,16 @@ export default function FaqsPage() {
   const [openIdx, setOpenIdx] = useState(null)
 
   const items = [
-    { q: 'Tôi có thể mua trả góp trực tuyến không?', a: 'Có, TechZone hỗ trợ chương trình mua trả góp 0% lãi suất thông qua thẻ tín dụng liên kết của hơn 25 ngân hàng hoặc trả góp qua công ty tài chính (Home Credit, FE Credit).' },
+    { q: 'Tôi có thể mua trả góp trực tuyến không?', a: 'Có, LaptopDevice hỗ trợ chương trình mua trả góp 0% lãi suất thông qua thẻ tín dụng liên kết của hơn 25 ngân hàng hoặc trả góp qua công ty tài chính (Home Credit, FE Credit).' },
     { q: 'Sản phẩm lỗi phần cứng sẽ được đổi trả thế nào?', a: 'Đối với sản phẩm có lỗi phần cứng từ nhà sản xuất, bạn được hỗ trợ đổi sang sản phẩm mới tương đương miễn phí 100% trong vòng 30 ngày kể từ lúc nhận hàng.' },
-    { q: 'Chính sách giao hàng của shop có hỗ trợ tỉnh xa không?', a: 'TechZone giao hàng trên toàn bộ 63 tỉnh thành Việt Nam thông qua các đối tác tin cậy (Viettel Post, GHTK). Mọi đơn hàng giá trị cao đều được đóng thùng xốp gỗ chống va đập và bảo hiểm hàng hóa 100%.' }
+    { q: 'Chính sách giao hàng của shop có hỗ trợ tỉnh xa không?', a: 'LaptopDevice giao hàng trên toàn bộ 63 tỉnh thành Việt Nam thông qua các đối tác tin cậy (Viettel Post, GHTK). Mọi đơn hàng giá trị cao đều được đóng thùng xốp gỗ chống va đập và bảo hiểm hàng hóa 100%.' }
   ]
 
   return (
     <StaticLayout title="Câu hỏi thường gặp">
       <div className="space-y-6">
         <p className="text-slate-500 text-sm leading-relaxed">
-          Tìm kiếm nhanh câu trả lời cho các thắc mắc phổ biến của khách hàng về dịch vụ, vận chuyển, đổi trả và thanh toán tại TechZone.
+          Tìm kiếm nhanh câu trả lời cho các thắc mắc phổ biến của khách hàng về dịch vụ, vận chuyển, đổi trả và thanh toán tại LaptopDevice.
         </p>
 
         <div className="space-y-3.5">

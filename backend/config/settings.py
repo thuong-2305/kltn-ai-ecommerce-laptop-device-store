@@ -300,6 +300,10 @@ GHN_SHOP_ID = config('GHN_SHOP_ID', default='')
 GHN_API_URL = config('GHN_API_URL', default='https://dev-online-gateway.ghn.vn/shiip/public-api/v2/')
 
 
+# Hugging Face Access Token for private repositories
+HF_TOKEN = config('HF_TOKEN', default='')
+
+
 # ─── Logging Configuration ───────────────────────────────────────────────
 LOG_DIR = BASE_DIR / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
@@ -377,8 +381,8 @@ LOGGING = {
 # ─── JAZZMIN ADMINISTRATION TEMPLATE CONFIGURATION ──────────────────────
 JAZZMIN_SETTINGS = {
     "site_title": "Laptop Device Store Admin",
-    "site_header": "TechZone Admin",
-    "site_brand": "TechZone",
+    "site_header": "LaptopDevice Admin",
+    "site_brand": "LaptopDevice",
     "welcome_sign": "Chào mừng bạn đến với trang quản trị Laptop Device Store",
     "copyright": "Laptop Device Store Ltd",
     "user_avatar": None,

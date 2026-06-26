@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, ShoppingCart, Share2, GitCompare, ChevronLeft, ChevronRight, Star, CheckCircle, Truck, RotateCcw, Shield, Edit3, Smile, Frown, Meh, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { Heart, ShoppingCart, Share2, GitCompare, ChevronLeft, ChevronRight, Star, CheckCircle, Truck, RotateCcw, Shield, Edit3, Smile, Frown, Meh, ChevronDown, ChevronUp, Check, Zap } from 'lucide-react'
 import { formatPrice } from '../../../shared/utils/formatters'
 import { useAuth } from '../../../contexts/AuthContext'
 
@@ -10,19 +10,41 @@ import { useAuth } from '../../../contexts/AuthContext'
 export function ProductImageGallery({ image, thumbnails = [], name }) {
   const images = [image, ...thumbnails].filter(Boolean)
   const [activeIdx, setActiveIdx] = useState(0)
+  const [zoom, setZoom] = useState(false)
+  const [coords, setCoords] = useState({ x: 50, y: 50 })
+  const containerRef = useRef(null)
 
   const prev = () => setActiveIdx((i) => (i - 1 + images.length) % images.length)
   const next = () => setActiveIdx((i) => (i + 1) % images.length)
 
+  const handleMouseMove = (e) => {
+    if (!containerRef.current) return
+    const { left, top, width, height } = containerRef.current.getBoundingClientRect()
+    const x = ((e.clientX - left) / width) * 100
+    const y = ((e.clientY - top) / height) * 100
+    setCoords({ x, y })
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Main image */}
-      <div className="relative bg-white rounded-2xl border border-slate-200 overflow-hidden aspect-square flex items-center justify-center group">
+      <div 
+        ref={containerRef}
+        onMouseEnter={() => setZoom(true)}
+        onMouseLeave={() => setZoom(false)}
+        onMouseMove={handleMouseMove}
+        className="relative bg-white rounded-2xl border border-slate-200 overflow-hidden aspect-square flex items-center justify-center group cursor-zoom-in"
+      >
         {images[activeIdx] ? (
           <img
             src={images[activeIdx]}
             alt={name}
-            className="w-full h-full object-contain p-6 transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-contain p-6 pointer-events-none"
+            style={{
+              transform: zoom ? 'scale(2.2)' : 'scale(1)',
+              transformOrigin: zoom ? `${coords.x}% ${coords.y}%` : 'center center',
+              transition: zoom ? 'transform 0.08s ease-out' : 'transform 0.3s ease, transform-origin 0.3s ease',
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-slate-50">
@@ -34,10 +56,10 @@ export function ProductImageGallery({ image, thumbnails = [], name }) {
 
         {images.length > 1 && (
           <>
-            <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:bg-white transition-all opacity-0 group-hover:opacity-100">
+            <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:bg-white transition-all opacity-0 group-hover:opacity-100 z-10">
               <ChevronLeft size={18} />
             </button>
-            <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:bg-white transition-all opacity-0 group-hover:opacity-100">
+            <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:bg-white transition-all opacity-0 group-hover:opacity-100 z-10">
               <ChevronRight size={18} />
             </button>
           </>
@@ -51,9 +73,8 @@ export function ProductImageGallery({ image, thumbnails = [], name }) {
             <button
               key={i}
               onClick={() => setActiveIdx(i)}
-              className={`flex-none w-16 h-16 rounded-xl border-2 overflow-hidden transition-all ${
-                i === activeIdx ? 'border-blue-600 shadow-md' : 'border-slate-200 hover:border-slate-400'
-              }`}
+              className={`flex-none w-16 h-16 rounded-xl border-2 overflow-hidden transition-all ${i === activeIdx ? 'border-blue-600 shadow-md' : 'border-slate-200 hover:border-slate-400'
+                }`}
             >
               <img src={src} alt={`${name} ${i + 1}`} className="w-full h-full object-contain p-1" />
             </button>
@@ -87,7 +108,7 @@ export function StarRating({ rating = 0, size = 16, showValue = false }) {
 /* ─────────────────────────────────────────────────────────────────
    PRODUCT INFO (price, badges, actions)
 ───────────────────────────────────────────────────────────────── */
-export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
+export function ProductInfo({ product, onAddToCart, onAddToWishlist, onBuyNow }) {
   const [qty, setQty] = useState(1)
   const [wishlisted, setWishlisted] = useState(false)
   const [activeVariant, setActiveVariant] = useState(() => {
@@ -100,17 +121,47 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
   const discountPercentage = activeVariant ? 0 : (product.discount_percentage || 0)
   const hasDiscount = !activeVariant && discountPercentage > 0
 
+  // Hide the variant selector if there is only 1 variant and it has a default name
+  const shouldShowVariantSelector = product.variants && product.variants.length > 0 && !(
+    product.variants.length === 1 && 
+    (product.variants[0].name.toLowerCase() === 'mặc định' || product.variants[0].name.toLowerCase() === 'default')
+  )
+
+  // Keep qty in sync when the selected variant changes
+  useEffect(() => {
+    if (activeVariant) {
+      if (activeVariant.stock <= 0) {
+        setQty(0)
+      } else {
+        setQty(1)
+      }
+    }
+  }, [activeVariant])
+
+  const handleDecrement = () => {
+    if (!activeVariant || activeVariant.stock <= 0) return
+    setQty((q) => Math.max(1, q - 1))
+  }
+
+  const handleIncrement = () => {
+    if (!activeVariant) {
+      setQty((q) => q + 1)
+      return
+    }
+    if (activeVariant.stock <= 0) return
+    setQty((q) => Math.min(activeVariant.stock, q + 1))
+  }
+
   const handleCartClick = () => {
     onAddToCart?.(product, qty, activeVariant)
   }
 
+  const handleBuyNowClick = () => {
+    onBuyNow?.(product, qty, activeVariant)
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Category */}
-      {product.category?.name && (
-        <span className="text-xs font-bold tracking-widest uppercase text-blue-600">{product.category.name}</span>
-      )}
-
       {/* Title */}
       <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">{product.name}</h1>
 
@@ -136,7 +187,7 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
       </div>
 
       {/* Variant Selector */}
-      {product.variants && product.variants.length > 0 && (
+      {shouldShowVariantSelector && (
         <div className="flex flex-col gap-3">
           <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Cấu hình:</span>
           <div className="flex flex-wrap gap-2.5">
@@ -146,11 +197,10 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
                 <button
                   key={v.id}
                   onClick={() => setActiveVariant(v)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                    isActive
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${isActive
                       ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-350'
-                  }`}
+                    }`}
                 >
                   {v.name}
                 </button>
@@ -169,25 +219,26 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
       <div className="flex items-center gap-6 flex-wrap">
         <div className="flex items-center gap-4">
           <span className="text-sm font-semibold text-slate-700">Số lượng:</span>
-          <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden">
+          <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white">
             <button
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
-              className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 transition-colors font-semibold text-lg"
+              onClick={handleDecrement}
+              disabled={!activeVariant || activeVariant.stock <= 0 || qty <= 1}
+              className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors font-semibold text-lg"
             >−</button>
             <span className="w-12 text-center text-sm font-bold text-slate-900">{qty}</span>
             <button
-              onClick={() => setQty((q) => q + 1)}
-              className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 transition-colors font-semibold text-lg"
+              onClick={handleIncrement}
+              disabled={!activeVariant || activeVariant.stock <= 0 || qty >= activeVariant.stock}
+              className="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors font-semibold text-lg"
             >+</button>
           </div>
         </div>
 
         {activeVariant && (
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-            activeVariant.stock > 0 
-              ? 'bg-green-50 text-green-700 border border-green-200' 
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${activeVariant.stock > 0
+              ? 'bg-green-50 text-green-700 border border-green-200'
               : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
+            }`}>
             {activeVariant.stock > 0 ? `Còn hàng (${activeVariant.stock})` : 'Hết hàng'}
           </span>
         )}
@@ -195,30 +246,51 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
 
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={handleCartClick}
-          disabled={activeVariant && activeVariant.stock <= 0}
-          className={`flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md hover:shadow-lg ${
-            activeVariant && activeVariant.stock <= 0
-              ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
-              : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-        >
-          <ShoppingCart size={18} />
-          Thêm vào giỏ hàng
-        </button>
+        {activeVariant && activeVariant.stock <= 0 ? (
+          <button
+            disabled
+            className="flex-1 h-12 rounded-xl bg-slate-100 text-slate-400 font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200"
+          >
+            Sản phẩm tạm hết hàng
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={handleBuyNowClick}
+              disabled={activeVariant && activeVariant.stock <= 0}
+              className={`flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md hover:shadow-lg ${activeVariant && activeVariant.stock <= 0
+                  ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600'
+                }`}
+            >
+              <Zap size={18} className="fill-current" />
+              Mua ngay
+            </button>
+            <button
+              onClick={handleCartClick}
+              disabled={activeVariant && activeVariant.stock <= 0}
+              className={`flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md hover:shadow-lg ${activeVariant && activeVariant.stock <= 0
+                  ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
+                  : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+            >
+              <ShoppingCart size={18} />
+              Thêm vào giỏ hàng
+            </button>
+          </>
+        )}
         <button
           onClick={() => { setWishlisted((w) => !w); onAddToWishlist?.(product) }}
-          className={`h-12 px-5 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${
-            wishlisted
+          className={`h-12 px-5 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${wishlisted
               ? 'border-red-500 text-red-500 bg-red-50'
               : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
-          }`}
+            }`}
         >
           <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />
           {wishlisted ? 'Đã yêu thích' : 'Yêu thích'}
         </button>
       </div>
+
 
       {/* Trust badges */}
       <div className="grid grid-cols-2 gap-3 pt-2">
@@ -247,7 +319,7 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist }) {
 // Helper to render bold text between **
 function renderBoldText(text) {
   const parts = text.split(/\*\*([^*]+)\*\*/)
-  return parts.map((part, index) => 
+  return parts.map((part, index) =>
     index % 2 === 1 ? <strong key={index} className="font-black text-slate-900">{part}</strong> : part
   )
 }
@@ -257,7 +329,7 @@ function parseDescription(text) {
   if (!text) return ''
   return text.split('\n').map((line, idx) => {
     let cleanLine = line.trim()
-    
+
     // Sub-header (### Header)
     if (cleanLine.startsWith('###')) {
       return (
@@ -266,7 +338,7 @@ function parseDescription(text) {
         </h4>
       )
     }
-    
+
     // Bullet list (- Item or * Item)
     if (cleanLine.startsWith('-') || cleanLine.startsWith('*')) {
       const content = cleanLine.substring(1).trim()
@@ -277,7 +349,7 @@ function parseDescription(text) {
         </li>
       )
     }
-    
+
     // Empty paragraph spacer
     if (cleanLine === '') {
       return <div key={idx} className="h-2" />
@@ -309,8 +381,8 @@ export function ProductSpecs({ config = [], specifications = [], description = '
       {description && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative">
           <h3 className="text-base font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-100 pb-3">Mô tả sản phẩm</h3>
-          
-          <div 
+
+          <div
             ref={descRef}
             className="transition-all duration-500 ease-in-out overflow-hidden"
             style={{ maxHeight: expanded ? '3000px' : '320px' }}
@@ -352,7 +424,7 @@ export function ProductSpecs({ config = [], specifications = [], description = '
               <tbody>
                 {specifications.map((spec, idx) => (
                   <tr key={spec.id || idx} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3 px-5 font-semibold text-slate-750 w-1/3 align-top bg-slate-50/30">
+                    <td className="py-3 px-5 font-semibold text-slate-700 w-1/3 align-top bg-slate-50/30">
                       {spec.key}
                     </td>
                     <td className="py-3 px-5 text-slate-600 align-top">
@@ -425,7 +497,7 @@ function RatingBar({ label, count, total }) {
 export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 0, ratingDistribution = {}, productId }) {
   const { user } = useAuth()
   const SENTIMENT_COLORS = { positive: 'text-green-600 bg-green-50 border-green-200', negative: 'text-red-600 bg-red-50 border-red-200', neutral: 'text-slate-600 bg-slate-50 border-slate-200' }
-  const SENTIMENT_LABEL  = {
+  const SENTIMENT_LABEL = {
     positive: (
       <span className="flex items-center gap-1">
         <Smile size={11} className="shrink-0" />
@@ -491,8 +563,18 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
       ) : (
         <div className="space-y-5">
           {reviews.map((review) => {
-            const [title, ...rest] = (review.comment || '').split('\n')
-            const body = rest.join('\n').trim()
+            const commentStr = review.comment || ''
+            const hasNewline = commentStr.includes('\n')
+            
+            let title = ''
+            let body = commentStr
+            
+            if (hasNewline) {
+              const parts = commentStr.split('\n')
+              title = parts[0]
+              body = parts.slice(1).join('\n').trim()
+            }
+            
             return (
               <div key={review.id} className="p-5 bg-white rounded-xl border border-slate-200 hover:shadow-sm transition-all">
                 <div className="flex items-start justify-between gap-4 mb-3">
@@ -516,7 +598,6 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
                 </div>
                 {title && <p className="text-sm font-bold text-slate-800 mb-1">{title}</p>}
                 {body && <p className="text-sm text-slate-600 leading-relaxed">{body}</p>}
-                {!body && review.comment && <p className="text-sm text-slate-600 leading-relaxed">{review.comment}</p>}
               </div>
             )
           })}

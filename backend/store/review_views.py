@@ -57,9 +57,22 @@ def product_reviews_api(request, pk):
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Sản phẩm không tồn tại'}, status=404)
 
+    from django.db.models import Q
+    current_user = None
+    try:
+        current_user = get_authenticated_user(request, raise_on_invalid_token=False)
+    except Exception:
+        pass
+
+    if current_user and current_user.is_authenticated:
+        reviews_filter = Q(is_spam=False) | Q(is_spam=True, user=current_user)
+    else:
+        reviews_filter = Q(is_spam=False)
+
     reviews = (
         Review.objects
-        .filter(product=product, is_spam=False)
+        .filter(product=product)
+        .filter(reviews_filter)
         .select_related('user')
         .prefetch_related('images')
         .order_by('-review_date')
@@ -162,6 +175,10 @@ def submit_review_api(request):
     from store.sentiment import SentimentAnalyzer
     sentiment_label, confidence = SentimentAnalyzer.analyze(full_comment, rating=rating)
 
+    # Run spam detection using our model from Hugging Face Hub
+    from store.spam_detective import isSpam
+    is_spam_detected = isSpam(full_comment)
+
     # Upsert — one review per user per product
     review, created = Review.objects.update_or_create(
         user=user,
@@ -172,7 +189,7 @@ def submit_review_api(request):
             'sentiment': sentiment_label,
             'score_analysis': confidence,
             'review_date': timezone.now(),
-            'is_spam': False,
+            'is_spam': is_spam_detected,
         }
     )
 
@@ -226,11 +243,42 @@ def admin_reviews_api(request):
     if not (user.is_staff or user.is_superuser):
         return JsonResponse({'error': 'Bạn không có quyền truy cập thông tin này'}, status=403)
 
-    # Fetch all reviews sorted by date
-    reviews = Review.objects.select_related('user', 'product').order_by('-review_date')
-    
+    from django.db.models import Q
+    from django.core.paginator import Paginator
+
+    search = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', 'all').strip()
+
+    reviews = Review.objects.select_related('user', 'product')
+
+    if status_filter == 'approved':
+        reviews = reviews.filter(is_spam=False)
+    elif status_filter == 'spam':
+        reviews = reviews.filter(is_spam=True)
+
+    if search:
+        reviews = reviews.filter(
+            Q(user__username__icontains=search) |
+            Q(user__first_name__icontains=search) |
+            Q(user__last_name__icontains=search) |
+            Q(comment__icontains=search) |
+            Q(product__name__icontains=search)
+        )
+
+    reviews = reviews.order_by('-review_date', '-id')
+
+    # Pagination
+    try:
+        page = int(request.GET.get('page', 1))
+        limit = int(request.GET.get('limit', 10))
+    except ValueError:
+        page, limit = 1, 10
+
+    paginator = Paginator(reviews, limit)
+    page_obj = paginator.get_page(page)
+
     serialized = []
-    for r in reviews:
+    for r in page_obj.object_list:
         serialized.append({
             'id': r.id,
             'user': r.user.get_full_name() or r.user.username,
@@ -243,7 +291,13 @@ def admin_reviews_api(request):
             'status': 'spam' if r.is_spam else 'approved',
         })
 
-    return JsonResponse({'reviews': serialized})
+    return JsonResponse({
+        'count': paginator.count,
+        'total_pages': paginator.num_pages,
+        'page': page_obj.number,
+        'limit': limit,
+        'results': serialized
+    }, json_dumps_params={'ensure_ascii': False})
 
 
 # ─── GET /api/store/products/<pk>/sentiment-stats/  ──────────────
@@ -386,4 +440,130 @@ def product_sentiment_stats_api(request, pk):
         'reviews': serialized_reviews,
         'total': total_reviews,
     })
+
+
+# ─── GET /api/store/admin/sentiment-stats/ ────────────────────────
+def global_sentiment_stats_api(request):
+    from django.db.models import Avg, Count, Q
+    from django.utils import timezone
+    from datetime import timedelta
+    from store.views import _build_media_url
+
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Phương thức không hỗ trợ'}, status=405)
+
+    user, err = _get_user(request)
+    if err:
+        return err
+
+    # Require staff or superuser
+    if not (user.is_staff or user.is_superuser):
+        return JsonResponse({'error': 'Bạn không có quyền truy cập thông tin này'}, status=403)
+
+    reviews = Review.objects.filter(is_spam=False)
+    total_reviews = reviews.count()
+
+    # Calculate sentiment distribution (Pie Chart)
+    positive_count = reviews.filter(sentiment='positive').count()
+    neutral_count = reviews.filter(sentiment='neutral').count()
+    negative_count = reviews.filter(sentiment='negative').count()
+
+    data_pie = [
+        {'name': 'Tích cực', 'value': positive_count, 'color': '#10B981'},
+        {'name': 'Trung tính', 'value': neutral_count, 'color': '#FBBF24'},
+        {'name': 'Tiêu cực', 'value': negative_count, 'color': '#EF4444'},
+    ]
+
+    # Calculate sentiment trends (Trend Line Chart over last 7 days)
+    data_trend = []
+    today = timezone.localtime(timezone.now()).date()
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_reviews = reviews.filter(review_date__date=day)
+        day_total = day_reviews.count()
+        if day_total > 0:
+            pos_pct = round((day_reviews.filter(sentiment='positive').count() / day_total) * 100)
+            neu_pct = round((day_reviews.filter(sentiment='neutral').count() / day_total) * 100)
+            neg_pct = round((day_reviews.filter(sentiment='negative').count() / day_total) * 100)
+        else:
+            pos_pct, neu_pct, neg_pct = 0, 0, 0
+            
+        data_trend.append({
+            'name': day.strftime('%d/%m'),
+            'pos': pos_pct,
+            'neu': neu_pct,
+            'neg': neg_pct,
+        })
+
+    # Products list with sentiment breakdown
+    products = (
+        Product.objects
+        .annotate(
+            total_reviews=Count('review', filter=Q(review__is_spam=False)),
+            avg_rating=Avg('review__rating', filter=Q(review__is_spam=False)),
+            pos_count=Count('review', filter=Q(review__sentiment='positive', review__is_spam=False)),
+            neu_count=Count('review', filter=Q(review__sentiment='neutral', review__is_spam=False)),
+            neg_count=Count('review', filter=Q(review__sentiment='negative', review__is_spam=False)),
+        )
+        .filter(total_reviews__gt=0)
+        .order_by('-total_reviews')
+    )
+
+    serialized_products = []
+    for p in products:
+        total = p.total_reviews
+        serialized_products.append({
+            'id': p.id,
+            'name': p.name,
+            'image': _build_media_url(request, p.image) if p.image else None,
+            'total_reviews': total,
+            'avg_rating': round(float(p.avg_rating or 0.0), 1),
+            'positive_percent': round((p.pos_count / total) * 100) if total > 0 else 0,
+            'neutral_percent': round((p.neu_count / total) * 100) if total > 0 else 0,
+            'negative_percent': round((p.neg_count / total) * 100) if total > 0 else 0,
+        })
+
+    return JsonResponse({
+        'total_reviews': total_reviews,
+        'dataPie': data_pie,
+        'dataTrend': data_trend,
+        'products': serialized_products,
+    })
+
+
+# ─── PUT/DELETE /api/store/admin/reviews/<pk>/  ───────────────────
+@csrf_exempt
+def admin_review_detail_api(request, pk):
+    if request.method not in ('PUT', 'DELETE'):
+        return JsonResponse({'error': 'Phương thức không hỗ trợ'}, status=405)
+
+    user, err = _get_user(request)
+    if err:
+        return err
+
+    # Require staff or superuser
+    if not (user.is_staff or user.is_superuser):
+        return JsonResponse({'error': 'Bạn không có quyền truy cập thông tin này'}, status=403)
+
+    try:
+        review = Review.objects.get(pk=pk)
+    except Review.DoesNotExist:
+        return JsonResponse({'error': 'Bình luận không tồn tại'}, status=404)
+
+    if request.method == 'PUT':
+        try:
+            body = json.loads(request.body)
+            is_spam = body.get('is_spam')
+            if is_spam is not None:
+                review.is_spam = bool(is_spam)
+                review.save()
+            return JsonResponse({'success': True, 'message': 'Cập nhật bình luận thành công'})
+        except Exception as e:
+            return JsonResponse({'error': 'Dữ liệu không hợp lệ'}, status=400)
+
+    elif request.method == 'DELETE':
+        review.delete()
+        return JsonResponse({'success': True, 'message': 'Xóa bình luận thành công'})
+
+
 

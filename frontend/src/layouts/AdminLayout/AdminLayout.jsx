@@ -1,10 +1,10 @@
 import { useState, Suspense } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { 
-  Home, ShoppingBag, Box, List, Users, Tag, BarChart2, 
-  FileText, Layout, MessageSquare, Folder, 
-  UserCog, Shield, Settings, Activity, LogOut,
-  Search, Bell, Maximize, Monitor, Menu
+  Home, ShoppingBag, Box, List, Users, Tag, 
+  MessageSquare, 
+  UserCog, Settings, LogOut,
+  Search, Bell, Maximize, Monitor, Menu, Smile, Shield
 } from 'lucide-react'
 import RouteSpinner from '../../shared/components/RouteSpinner'
 import { useAuth } from '../../contexts/AuthContext'
@@ -18,25 +18,20 @@ const SIDEBAR_SECTIONS = [
       { id: 'categories', label: 'Danh mục', icon: List, path: '/admin/categories' },
       { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
       { id: 'vouchers', label: 'Voucher', icon: Tag, path: '/admin/vouchers' },
-      { id: 'revenue', label: 'Báo cáo doanh thu', icon: BarChart2, path: '/admin/revenue' },
     ]
   },
   {
     title: 'NỘI DUNG',
     items: [
-      { id: 'posts', label: 'Bài viết', icon: FileText, path: '/admin/posts' },
-      { id: 'pages', label: 'Trang', icon: Layout, path: '/admin/pages' },
       { id: 'comments', label: 'Bình luận', icon: MessageSquare, path: '/admin/comments' },
-      { id: 'post-categories', label: 'Danh mục bài viết', icon: Folder, path: '/admin/post-categories' },
+      { id: 'sentiment', label: 'Phân tích cảm xúc AI', icon: Smile, path: '/admin/sentiment' },
     ]
   },
   {
     title: 'HỆ THỐNG',
     items: [
       { id: 'users', label: 'Người dùng', icon: UserCog, path: '/admin/users' },
-      { id: 'roles', label: 'Vai trò & quyền', icon: Shield, path: '/admin/roles' },
       { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-      { id: 'activity', label: 'Nhật ký hoạt động', icon: Activity, path: '/admin/activity' },
     ]
   }
 ]
@@ -93,7 +88,7 @@ export default function AdminLayout() {
         <div className="h-16 flex items-center justify-center border-b border-slate-800">
           <Link to="/admin" className="inline-flex flex-col items-center">
             <div className="flex items-center gap-1.5 text-xl font-black tracking-tight leading-none text-white">
-              <span>TECHZONE</span>
+              <span>LAPTOPDEVICE</span>
             </div>
             <span className="text-blue-500 text-[10px] font-bold tracking-widest mt-0.5 relative after:absolute after:top-1/2 after:-right-4 after:w-3 after:h-px after:bg-blue-500 before:absolute before:top-1/2 before:-left-4 before:w-3 before:h-px before:bg-blue-500">ADMIN</span>
           </Link>

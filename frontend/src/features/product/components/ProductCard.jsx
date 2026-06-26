@@ -11,19 +11,49 @@ const parseConfig = (configStr) => {
     const trimmed = seg.trim()
     if (!trimmed) return
     const parts = trimmed.split(' + ')
-    if (parts.length >= 2) {
-      const label = parts[0].trim().toLowerCase() // e.g. "cpu", "ram"
-      const val = parts.slice(1).map(p => {
-        if (p.includes(': ')) {
-          return p.split(': ')[1].trim()
+    
+    // 1. Check individual key-value pairs (e.g. "Loại CPU: Intel i5")
+    parts.forEach((p) => {
+      if (p.includes(': ')) {
+        const idx = p.indexOf(': ')
+        const key = p.substring(0, idx).trim().toLowerCase()
+        const val = p.substring(idx + 2).trim()
+        
+        if (key.includes('cpu') || key.includes('bộ xử lý') || key.includes('vi xử lý')) {
+          if (!specs.cpu) specs.cpu = val
+        } else if (key.includes('dung lượng ram') || key.includes('ram') || key.includes('bộ nhớ trong')) {
+          if (!specs.ram) specs.ram = val
+        } else if (key.includes('ổ cứng') || key.includes('ssd') || key.includes('dung lượng ổ cứng') || key.includes('storage') || key.includes('lưu trữ')) {
+          if (!specs.storage) specs.storage = val
+        } else if (key.includes('màn hình') || key.includes('screen') || key.includes('kích thước màn hình') || key.includes('hiển thị')) {
+          if (!specs.screen) specs.screen = val
+        } else if (key.includes('hệ điều hành') || key.includes('os') || key.includes('operating system')) {
+          if (!specs.os) specs.os = val
         }
-        return p.trim()
-      }).join(', ')
-      specs[label] = val
+      }
+    })
+    
+    // 2. Fallback/Legacy group-level logic
+    if (parts.length >= 2) {
+      const label = parts[0].trim().toLowerCase()
+      const getVal = () => parts.slice(1).map(p => p.includes(': ') ? p.substring(p.indexOf(': ') + 2).trim() : p.trim()).join(', ')
+      
+      if (label.includes('cpu') || label.includes('bộ xử lý')) {
+        if (!specs.cpu) specs.cpu = getVal()
+      } else if (label.includes('ram') || label.includes('bộ nhớ')) {
+        if (!specs.ram) specs.ram = getVal()
+      } else if (label.includes('màn hình') || label.includes('screen')) {
+        if (!specs.screen) specs.screen = getVal()
+      } else if (label.includes('ổ cứng') || label.includes('ssd') || label.includes('lưu trữ')) {
+        if (!specs.storage) specs.storage = getVal()
+      } else if (label.includes('hệ điều hành') || label.includes('os')) {
+        if (!specs.os) specs.os = getVal()
+      }
     }
   })
   return specs
 }
+
 
 /**
  * ProductCard - Modern redesigned product card component

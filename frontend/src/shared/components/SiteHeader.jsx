@@ -182,7 +182,7 @@ function SiteHeader({ categories = [], cartCount = 0 }) {
             id="site-search" type="search"
             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Bạn cần tìm gì?"
-            className={`${COMMON_STYLES.searchBar.input} pr-10`}
+            className={`${COMMON_STYLES.searchBar.input} w-full pr-12`}
           />
           <button
             type="button"

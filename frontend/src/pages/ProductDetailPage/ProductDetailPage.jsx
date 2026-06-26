@@ -52,6 +52,15 @@ function ProductDetailPage() {
     }
   }
 
+  const handleBuyNow = async (product, qty = 1, activeVariant = null) => {
+    const res = await addItem(product.id, qty, activeVariant?.id)
+    if (res.success) {
+      navigate('/checkout')
+    } else {
+      showMsg(res.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.', 'error')
+    }
+  }
+
   const handleAddToWishlist = async (product) => {
     try {
       const res = await toggleWishlist(product)
@@ -124,6 +133,7 @@ function ProductDetailPage() {
                 product={product}
                 onAddToCart={handleAddToCart}
                 onAddToWishlist={handleAddToWishlist}
+                onBuyNow={handleBuyNow}
               />
             </div>
 

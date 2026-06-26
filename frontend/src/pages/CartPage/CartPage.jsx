@@ -3,7 +3,6 @@ import { ShoppingCart, ChevronRight } from 'lucide-react'
 import { useCart } from '../../features/cart/hooks/useCart'
 import {
   CartItemRow,
-  ShippingSelector,
   OrderSummary,
   EmptyCart,
   CartSkeleton,
@@ -84,31 +83,6 @@ function CartPage() {
                     disabled={actionLoading}
                   />
                 ))}
-              </div>
-
-              {/* Shipping method */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6">
-                <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4">Phương thức vận chuyển</h2>
-                <ShippingSelector
-                  selected={cart.shipping_method}
-                  onChange={changeShipping}
-                  disabled={actionLoading}
-                />
-              </div>
-
-              {/* Promo code placeholder */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6">
-                <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4">Mã giảm giá</h2>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    placeholder="Nhập mã khuyến mãi..."
-                    className="flex-1 h-11 px-4 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  />
-                  <button className="h-11 px-5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 active:scale-95 transition-all">
-                    Áp dụng
-                  </button>
-                </div>
               </div>
             </div>
 
