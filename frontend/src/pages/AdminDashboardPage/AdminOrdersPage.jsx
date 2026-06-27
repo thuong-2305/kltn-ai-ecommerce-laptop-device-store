@@ -44,6 +44,7 @@ export default function AdminOrdersPage() {
   const [editStatus, setEditStatus] = useState('')
   const [editIsPaid, setEditIsPaid] = useState(false)
   const [editTrackingCode, setEditTrackingCode] = useState('')
+  const [editCancelReason, setEditCancelReason] = useState('')
   const [editLoading, setEditLoading] = useState(false)
 
   // Delete confirm states
@@ -90,16 +91,22 @@ export default function AdminOrdersPage() {
     }
   }
 
-  const handleOpenEdit = (order) => {
+  const handleOpenEdit = async (order) => {
     setOrderToEdit(order)
     setEditStatus(order.sStatus)
     setEditIsPaid(order.pStatus === 'paid')
     setEditTrackingCode('')
-    
-    if (selectedOrderDetails && selectedOrderDetails.id === order.id) {
-      setEditTrackingCode(selectedOrderDetails.shipping_tracking_code || '')
-    }
+    setEditCancelReason('')
     setEditModalOpen(true)
+
+    // Load additional details asynchronously
+    try {
+      const res = await api.get(`admin/orders/${order.id}/`)
+      setEditTrackingCode(res.data.shipping_tracking_code || '')
+      setEditCancelReason(res.data.cancel_reason || '')
+    } catch (err) {
+      console.error('Failed to load tracking/cancel reason details', err)
+    }
   }
 
   const handleEditSubmit = async (e) => {
@@ -109,7 +116,8 @@ export default function AdminOrdersPage() {
       await api.put(`admin/orders/${orderToEdit.id}/`, {
         status: editStatus,
         is_paid: editIsPaid,
-        shipping_tracking_code: editTrackingCode
+        shipping_tracking_code: editTrackingCode,
+        cancel_reason: editStatus === 'cancelled' ? editCancelReason : ''
       })
       setEditModalOpen(false)
       fetchOrders()
@@ -156,7 +164,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -169,9 +177,9 @@ export default function AdminOrdersPage() {
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Tìm kiếm theo mã đơn, tên khách, số điện thoại..." 
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo mã đơn, tên khách, số điện thoại..."
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white transition-colors"
             value={searchTerm}
             onChange={(e) => {
@@ -181,7 +189,7 @@ export default function AdminOrdersPage() {
           />
         </div>
         <div className="flex gap-4">
-          <select 
+          <select
             className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 transition-colors cursor-pointer"
             value={statusFilter}
             onChange={(e) => {
@@ -231,7 +239,7 @@ export default function AdminOrdersPage() {
                 {orders.length > 0 ? (
                   orders.map((order) => (
                     <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td 
+                      <td
                         onClick={() => handleOpenDetails(order.id)}
                         className="py-3 px-6 font-bold text-blue-600 hover:underline cursor-pointer"
                       >
@@ -255,23 +263,23 @@ export default function AdminOrdersPage() {
                       <td className="py-3 px-6 text-sm text-slate-500">{order.date}</td>
                       <td className="py-3 px-6 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button 
+                          <button
                             onClick={() => handleOpenDetails(order.id)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" 
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Xem chi tiết"
                           >
                             <Eye size={16} />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleOpenEdit(order)}
-                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer" 
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
                             title="Cập nhật trạng thái"
                           >
                             <Edit size={16} />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleConfirmDelete(order)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" 
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Xóa"
                           >
                             <Trash2 size={16} />
@@ -297,7 +305,7 @@ export default function AdminOrdersPage() {
               Hiển thị <span className="font-bold text-slate-800">{startRange}</span> đến <span className="font-bold text-slate-800">{endRange}</span> trong số <span className="font-bold text-slate-800">{totalCount}</span> đơn hàng
             </p>
             <div className="flex gap-1">
-              <button 
+              <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-650 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
@@ -305,19 +313,18 @@ export default function AdminOrdersPage() {
                 Trước
               </button>
               {pageNumbers.map(num => (
-                <button 
+                <button
                   key={num}
                   onClick={() => handlePageChange(num)}
-                  className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer ${
-                    currentPage === num 
-                      ? 'border-blue-600 bg-blue-600 text-white font-bold' 
-                      : 'border-slate-200 text-slate-650 hover:bg-slate-50'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer ${currentPage === num
+                    ? 'border-blue-600 bg-blue-600 text-white font-bold'
+                    : 'border-slate-200 text-slate-650 hover:bg-slate-50'
+                    }`}
                 >
                   {num}
                 </button>
               ))}
-              <button 
+              <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-650 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
@@ -346,7 +353,7 @@ export default function AdminOrdersPage() {
                     <h2 className="text-lg font-black text-slate-800">Chi tiết đơn hàng {selectedOrderDetails.order_code}</h2>
                     <p className="text-xs text-slate-400 mt-0.5">Đặt ngày: {selectedOrderDetails.date_ordered}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setDetailModalOpen(false)}
                     className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg"
                   >
@@ -373,6 +380,14 @@ export default function AdminOrdersPage() {
                     <p className="font-mono text-slate-700 font-bold mt-1">{selectedOrderDetails.shipping_tracking_code || 'Chưa liên kết vận chuyển'}</p>
                   </div>
                 </div>
+
+                {/* Cancel Reason */}
+                {selectedOrderDetails.status === 'cancelled' && selectedOrderDetails.cancel_reason && (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-xs text-red-750 space-y-1">
+                    <p className="font-bold uppercase tracking-wider text-[10px] text-red-500">Lý do hủy đơn hàng</p>
+                    <p className="font-semibold text-sm">{selectedOrderDetails.cancel_reason}</p>
+                  </div>
+                )}
 
                 {/* Customer Details */}
                 <div className="space-y-2">
@@ -423,7 +438,7 @@ export default function AdminOrdersPage() {
 
                 {/* Footer action */}
                 <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                  <button 
+                  <button
                     onClick={() => {
                       setDetailModalOpen(false)
                       handleOpenEdit({
@@ -453,11 +468,11 @@ export default function AdminOrdersPage() {
               <h3 className="font-bold text-slate-800 text-lg">Cập nhật đơn hàng {orderToEdit?.order_code}</h3>
               <button onClick={() => setEditModalOpen(false)} className="p-1 hover:bg-slate-50 rounded-lg text-slate-400"><X size={18} /></button>
             </div>
-            
+
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500">Trạng thái vận chuyển</label>
-                <select 
+                <select
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 cursor-pointer"
                   value={editStatus}
                   onChange={e => setEditStatus(e.target.value)}
@@ -472,7 +487,7 @@ export default function AdminOrdersPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500">Mã vận đơn (GHN)</label>
-                <input 
+                <input
                   type="text"
                   placeholder="Ví dụ: GHN-12345ABC"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500"
@@ -481,9 +496,23 @@ export default function AdminOrdersPage() {
                 />
               </div>
 
+              {editStatus === 'cancelled' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Lý do hủy đơn</label>
+                  <textarea
+                    placeholder="Nhập lý do hủy đơn..."
+                    rows={2}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 resize-none"
+                    value={editCancelReason}
+                    onChange={e => setEditCancelReason(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
               <div className="flex items-center gap-2 py-2">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   id="editIsPaid"
                   className="rounded border-slate-350 text-blue-600 focus:ring-blue-500"
                   checked={editIsPaid}
@@ -493,15 +522,15 @@ export default function AdminOrdersPage() {
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setEditModalOpen(false)}
                   className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
                 >
                   Hủy
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={editLoading}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-750 text-white font-bold text-xs shadow-sm cursor-pointer"
                 >
@@ -526,15 +555,15 @@ export default function AdminOrdersPage() {
               <p className="text-slate-500 text-sm mt-1">Bạn có chắc muốn xóa vĩnh viễn đơn hàng <b>{orderToDelete?.order_code}</b> khỏi cơ sở dữ liệu? Hành động này không thể hoàn tác.</p>
             </div>
             <div className="flex gap-3 w-full">
-              <button 
+              <button
                 onClick={() => setDeleteConfirmOpen(false)}
                 className="flex-1 py-2.5 rounded-xl border border-slate-250 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
               >
                 Hủy bỏ
               </button>
-              <button 
+              <button
                 onClick={handleDeleteSubmit}
-                className="flex-1 py-2.5 rounded-xl bg-red-650 hover:bg-red-700 text-white font-bold text-xs cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs cursor-pointer"
               >
                 Xác nhận
               </button>

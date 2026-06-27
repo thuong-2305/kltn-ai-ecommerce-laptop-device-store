@@ -47,7 +47,7 @@ export default function AdminCommentsPage() {
     try {
       await api.put(`admin/reviews/${id}/`, { is_spam: isSpamVal })
       // Update local state directly for speed
-      setComments(prev => 
+      setComments(prev =>
         prev.map(c => c.id === id ? { ...c, status: isSpamVal ? 'spam' : 'approved' } : c)
       )
     } catch (err) {
@@ -55,16 +55,26 @@ export default function AdminCommentsPage() {
     }
   }
 
-  const handleDeleteComment = async (id) => {
-    if (!window.confirm('Bạn có chắc muốn xóa vĩnh viễn bình luận này khỏi hệ thống?')) return
+  // Delete confirm states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [commentToDelete, setCommentToDelete] = useState(null)
+
+  const handleConfirmDelete = (cmt) => {
+    setCommentToDelete(cmt)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDeleteSubmit = async () => {
     try {
-      await api.delete(`admin/reviews/${id}/`)
-      // Refresh to update count and get next page items
+      await api.delete(`admin/reviews/${commentToDelete.id}/`)
+      setDeleteConfirmOpen(false)
+      setCommentToDelete(null)
       fetchComments()
     } catch (err) {
       alert('Không thể xóa bình luận.')
     }
   }
+
 
   const startRange = totalCount > 0 ? (currentPage - 1) * limit + 1 : 0
   const endRange = Math.min(currentPage * limit, totalCount)
@@ -109,19 +119,19 @@ export default function AdminCommentsPage() {
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Tìm kiếm nội dung..." 
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" 
-            value={searchTerm} 
+          <input
+            type="text"
+            placeholder="Tìm kiếm nội dung..."
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500"
+            value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value)
               setCurrentPage(1)
-            }} 
+            }}
           />
         </div>
         <div className="relative w-full sm:w-auto shrink-0">
-          <select 
+          <select
             className="w-full sm:w-48 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 font-semibold cursor-pointer"
             value={statusFilter}
             onChange={(e) => {
@@ -165,12 +175,11 @@ export default function AdminCommentsPage() {
                     </td>
                     <td className="py-3 px-6 text-sm text-slate-500">{cmt.time}</td>
                     <td className="py-3 px-6 text-xs font-bold">
-                      <span className={`px-2 py-0.5 rounded-full border ${
-                        cmt.sentiment === 'positive' ? 'bg-green-50 border-green-200 text-green-700' :
-                        cmt.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-700' :
-                        'bg-slate-50 border-slate-200 text-slate-600'
-                      }`}>
-                        {cmt.sentiment === 'positive' ? 'Tích cóc' : cmt.sentiment === 'negative' ? 'Tiêu cực' : 'Trung lập'}
+                      <span className={`px-2 py-0.5 rounded-full border ${cmt.sentiment === 'positive' ? 'bg-green-50 border-green-200 text-green-700' :
+                          cmt.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-700' :
+                            'bg-slate-50 border-slate-200 text-slate-600'
+                        }`}>
+                        {cmt.sentiment === 'positive' ? 'Tích cực' : cmt.sentiment === 'negative' ? 'Tiêu cực' : 'Trung lập'}
                       </span>
                     </td>
                     <td className="py-3 px-6">
@@ -181,7 +190,7 @@ export default function AdminCommentsPage() {
                     <td className="py-3 px-6 text-right">
                       <div className="flex justify-end gap-1">
                         {cmt.status === 'spam' ? (
-                          <button 
+                          <button
                             onClick={() => handleToggleSpam(cmt.id, false)}
                             className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg cursor-pointer"
                             title="Duyệt hợp lệ (Bỏ spam)"
@@ -189,7 +198,7 @@ export default function AdminCommentsPage() {
                             <CheckCircle2 size={18} />
                           </button>
                         ) : (
-                          <button 
+                          <button
                             onClick={() => handleToggleSpam(cmt.id, true)}
                             className="p-1.5 text-red-655 hover:bg-red-50 rounded-lg cursor-pointer"
                             title="Đánh dấu Spam"
@@ -197,8 +206,8 @@ export default function AdminCommentsPage() {
                             <XCircle size={18} />
                           </button>
                         )}
-                        <button 
-                          onClick={() => handleDeleteComment(cmt.id)}
+                        <button
+                          onClick={() => handleConfirmDelete(cmt)}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
                           title="Xóa bình luận"
                         >
@@ -222,7 +231,7 @@ export default function AdminCommentsPage() {
               Hiển thị <span className="font-bold text-slate-800">{startRange}</span> đến <span className="font-bold text-slate-800">{endRange}</span> trong số <span className="font-bold text-slate-800">{totalCount}</span> bình luận
             </p>
             <div className="flex gap-1">
-              <button 
+              <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-650 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
@@ -230,19 +239,18 @@ export default function AdminCommentsPage() {
                 Trước
               </button>
               {pageNumbers.map(num => (
-                <button 
+                <button
                   key={num}
                   onClick={() => handlePageChange(num)}
-                  className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer ${
-                    currentPage === num 
-                      ? 'border-blue-600 bg-blue-600 text-white font-bold' 
+                  className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer ${currentPage === num
+                      ? 'border-blue-600 bg-blue-600 text-white font-bold'
                       : 'border-slate-200 text-slate-650 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   {num}
                 </button>
               ))}
-              <button 
+              <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-650 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
@@ -253,6 +261,35 @@ export default function AdminCommentsPage() {
           </div>
         )}
       </div>
+      {/* ─── Delete Confirmation Modal ─── */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 max-w-sm w-full shadow-2xl flex flex-col items-center text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center">
+              <Trash2 size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800 text-lg">Xóa bình luận</h3>
+              <p className="text-slate-500 text-sm mt-1">Bạn có chắc chắn muốn xóa vĩnh viễn bình luận của <b>{commentToDelete?.user}</b>? Hành động này không thể hoàn tác.</p>
+            </div>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-250 text-slate-650 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleDeleteSubmit}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs cursor-pointer"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Edit, Trash2, Loader2, Info, X, Mail } from 'lucide-react'
+import { Search, Edit, Trash2, Loader2, Info, X, Mail, Eye } from 'lucide-react'
 import api from '../../services/api'
 
 const STATUS_CFG = {
@@ -24,6 +24,11 @@ export default function AdminCustomersPage() {
   const [customerToEdit, setCustomerToEdit] = useState(null)
   const [editIsActive, setEditIsActive] = useState(true)
   const [editLoading, setEditLoading] = useState(false)
+
+  // Detail modal states
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [selectedCustomerDetails, setSelectedCustomerDetails] = useState(null)
 
   // Delete confirm states
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -54,6 +59,21 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     fetchCustomers()
   }, [searchTerm, currentPage])
+
+  const handleOpenDetails = async (custId) => {
+    setDetailLoading(true)
+    setIsDetailOpen(true)
+    setSelectedCustomerDetails(null)
+    try {
+      const res = await api.get(`admin/users/${custId}/`)
+      setSelectedCustomerDetails(res.data)
+    } catch (err) {
+      setError('Không tải được chi tiết lịch sử mua sắm của khách hàng.')
+      setIsDetailOpen(false)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
 
   const handleOpenEdit = (cust) => {
     setCustomerToEdit(cust)
@@ -174,7 +194,9 @@ export default function AdminCustomersPage() {
                       <tr key={cust.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="py-3 px-6">
                           <div className="flex items-center gap-3">
-                            <img src={cust.avatar} alt={cust.name} className="w-10 h-10 rounded-full bg-slate-200 object-cover" />
+                            <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-black text-sm shrink-0 shadow-sm select-none">
+                              {cust.name ? cust.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?'}
+                            </span>
                             <div>
                               <p className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors cursor-pointer">{cust.name}</p>
                               <p className="text-xs text-slate-500 mt-0.5">{cust.email}</p>
@@ -191,6 +213,13 @@ export default function AdminCustomersPage() {
                         </td>
                         <td className="py-3 px-6 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <button 
+                              onClick={() => handleOpenDetails(cust.id)}
+                              className="p-1.5 text-slate-400 hover:text-blue-650 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" 
+                              title="Xem chi tiết"
+                            >
+                              <Eye size={16} />
+                            </button>
                             <a href={`mailto:${cust.email}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Gửi Email">
                               <Mail size={16} />
                             </a>
@@ -330,6 +359,127 @@ export default function AdminCustomersPage() {
                 Xác nhận
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Customer Details Modal ─── */}
+      {isDetailOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-5">
+            {detailLoading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
+                <p className="text-slate-500 font-bold text-sm">Đang tải chi tiết khách hàng...</p>
+              </div>
+            ) : selectedCustomerDetails && (
+              <>
+                {/* Header */}
+                <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+                  <div>
+                    <h2 className="text-lg font-black text-slate-800">Chi tiết khách hàng</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Tên đăng nhập: {selectedCustomerDetails.username}</p>
+                  </div>
+                  <button
+                    onClick={() => setIsDetailOpen(false)}
+                    className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg cursor-pointer"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Profile Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs">
+                  <div>
+                    <p className="font-bold text-slate-400 uppercase">Họ và tên</p>
+                    <p className="font-bold text-slate-800 mt-1 text-sm">{selectedCustomerDetails.name}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-400 uppercase">Email</p>
+                    <p className="font-semibold text-slate-700 mt-1 text-sm">{selectedCustomerDetails.email}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-400 uppercase">Số điện thoại</p>
+                    <p className="font-semibold text-slate-700 mt-1 text-sm">{selectedCustomerDetails.phone || 'Chưa cập nhật'}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-400 uppercase">Ngày tham gia</p>
+                    <p className="font-semibold text-slate-700 mt-1 text-sm">{selectedCustomerDetails.date_joined || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-400 uppercase">Trạng thái hoạt động</p>
+                    <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md font-bold ${
+                      selectedCustomerDetails.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {selectedCustomerDetails.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Order History */}
+                <div className="space-y-3">
+                  <h3 className="font-bold text-slate-800 text-sm">Lịch sử đơn hàng ({selectedCustomerDetails.orders?.length || 0})</h3>
+                  <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white max-h-60 overflow-y-auto">
+                    <table className="w-full text-left border-collapse whitespace-nowrap text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-150 text-slate-500 font-bold uppercase tracking-wider sticky top-0 z-10">
+                        <tr>
+                          <th className="py-2.5 px-4">Mã đơn</th>
+                          <th className="py-2.5 px-4">Ngày đặt</th>
+                          <th className="py-2.5 px-4 text-right">Tổng tiền</th>
+                          <th className="py-2.5 px-4 text-center">Thanh toán</th>
+                          <th className="py-2.5 px-4 text-center">Trạng thái giao</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                        {selectedCustomerDetails.orders && selectedCustomerDetails.orders.length > 0 ? (
+                          selectedCustomerDetails.orders.map((o) => (
+                            <tr key={o.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-2.5 px-4 font-bold text-blue-600">{o.order_code}</td>
+                              <td className="py-2.5 px-4 text-slate-500">{o.date_ordered}</td>
+                              <td className="py-2.5 px-4 text-right font-bold text-slate-800">
+                                {o.amount_paid.toLocaleString('vi-VN')} đ
+                              </td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  o.is_paid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {o.is_paid ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  o.status === 'delivered' ? 'bg-green-50 text-green-750 border border-green-200' :
+                                  o.status === 'cancelled' ? 'bg-red-50 text-red-750 border border-red-200' :
+                                  o.status === 'shipping' ? 'bg-blue-50 text-blue-750 border border-blue-200' :
+                                  o.status === 'confirmed' ? 'bg-purple-50 text-purple-750 border border-purple-200' :
+                                  'bg-amber-50 text-amber-750 border border-amber-200'
+                                }`}>
+                                  {o.status_display}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="py-6 text-center text-slate-400 font-bold">Khách hàng chưa có đơn hàng nào.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Footer action */}
+                <div className="flex justify-end pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => setIsDetailOpen(false)}
+                    className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-white font-bold text-xs cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

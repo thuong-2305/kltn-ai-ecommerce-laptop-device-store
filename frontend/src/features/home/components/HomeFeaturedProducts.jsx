@@ -109,7 +109,7 @@ function HomeFeaturedProducts({ tabs = [], activeTabId, onSelectTab, products = 
       <div className="flex items-center justify-between gap-4 rounded-xxl bg-white/80 px-4.5 py-3.5 shadow-standard">
         <div className='flex items-center justify-center gap-5'>
           <h1 className="text-3xl font-extrabold text-title text-slate-900">SẢN PHẨM MỚI</h1>
-      
+
           <div className="flex flex-wrap gap-2.5">
             {tabs.map((tab) => (
               <button
@@ -139,70 +139,70 @@ function HomeFeaturedProducts({ tabs = [], activeTabId, onSelectTab, products = 
               className="relative flex flex-col overflow-hidden transition-all group rounded-xxl bg-white/85 shadow-standard ring-1 ring-slate-200/70 backdrop-blur-sm duration-standard hover:-translate-y-1 hover:shadow-medium hover:ring-blue-600/15 focus-within:-translate-y-1 focus-within:shadow-medium"
               id={`category-${product.category?.id ?? product.id}`}
             >
-            {product.is_sale && (
-              <span className="absolute left-3.5 top-3.5 z-20 inline-flex items-center rounded-full bg-linear-to-r from-red-500 via-rose-500 to-orange-500 px-3 py-1.5 text-caption-lg font-extrabold text-white shadow-light">
-                -{Math.round(Number(product.discount_percentage || 0))}%
-              </span>
-            )}
+              {product.is_sale && (
+                <span className="absolute left-3.5 top-3.5 z-20 inline-flex items-center rounded bg-linear-to-r from-red-500 via-rose-500 to-orange-500 px-3 py-1 text-caption-lg font-extrabold text-white shadow-light">
+                  -{Math.round(Number(product.discount_percentage || 0))}%
+                </span>
+              )}
 
-            <button
-              type="button"
-              aria-label="Thêm vào giỏ hàng"
-              className="absolute right-3.5 top-3.5 z-20 grid h-10 w-10 place-items-center rounded-full bg-white/85 text-blue-600 shadow-light backdrop-blur-sm transition-all duration-standard hover:-translate-y-0.5 hover:bg-blue-600 hover:text-white hover:shadow-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 active:translate-y-0"
-            >
-              <CartIcon className="w-5 h-5 transition-transform duration-standard group-hover:scale-105" />
-            </button>
-
-            <div className="relative grid px-4 pt-5 pb-3 overflow-hidden place-items-center bg-linear-to-b from-slate-50/90 to-white/98">
-              <div className="absolute inset-0 transition-opacity opacity-0 pointer-events-none -z-1 duration-standard group-hover:opacity-100">
-                <div className="absolute h-24 -translate-x-1/2 rounded-full left-1/2 top-10 w-44 bg-blue-600/12 blur-2xl" />
-                <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-sky-500/10 to-transparent blur-xl" />
-              </div>
-              <img
-                src={product.image}
-                alt={product.name}
-                className="object-contain w-full transition-transform ease-out h-52 duration-standard group-hover:-translate-y-1 group-hover:scale-105"
-              />
-            </div>
-
-            <div className="flex flex-col gap-3 p-4">
-              <h3
-                className="m-0 text-base font-semibold leading-snug text-slate-900"
-                style={clampTwoLinesStyle}
+              <button
+                type="button"
+                aria-label="Thêm vào giỏ hàng"
+                className="absolute right-3.5 top-3.5 z-20 grid h-10 w-10 place-items-center rounded-full bg-white/85 text-blue-600 shadow-light backdrop-blur-sm transition-all duration-standard hover:-translate-y-0.5 hover:bg-blue-600 hover:text-white hover:shadow-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 active:translate-y-0"
               >
-                {product.name}
-              </h3>
+                <CartIcon className="w-5 h-5 transition-transform duration-standard group-hover:scale-105" />
+              </button>
 
-              <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-                <strong className="text-lg font-extrabold tracking-tight text-blue-600">
-                  {formatPrice(product.sale_price ?? product.price)}
-                </strong>
-                {product.is_sale && (
-                  <del className="text-sm text-slate-400">
-                    {formatPrice(product.price)}
-                  </del>
-                )}
+              <div className="relative grid px-4 pt-5 pb-3 overflow-hidden place-items-center bg-linear-to-b from-slate-50/90 to-white/98">
+                <div className="absolute inset-0 transition-opacity opacity-0 pointer-events-none -z-1 duration-standard group-hover:opacity-100">
+                  <div className="absolute h-24 -translate-x-1/2 rounded-full left-1/2 top-10 w-44 bg-blue-600/12 blur-2xl" />
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-sky-500/10 to-transparent blur-xl" />
+                </div>
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="object-contain w-full transition-transform ease-out h-52 duration-standard group-hover:-translate-y-1 group-hover:scale-105"
+                />
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <StarRating value={product.average_rating || 0} />
-                  <small className="text-caption-sm text-slate-500">
-                    ({product.review_count || 0})
-                  </small>
+              <div className="flex flex-col gap-3 p-4">
+                <h3
+                  className="m-0 text-base font-semibold leading-snug text-slate-900"
+                  style={clampTwoLinesStyle}
+                >
+                  {product.name}
+                </h3>
+
+                <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <strong className="text-lg font-extrabold tracking-tight text-blue-600">
+                    {formatPrice(product.sale_price ?? product.price)}
+                  </strong>
+                  {product.is_sale && (
+                    <del className="text-sm text-slate-400">
+                      {formatPrice(product.price)}
+                    </del>
+                  )}
                 </div>
 
-                {productTag && (
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-caption-sm font-extrabold tracking-wide ${productTag.className}`}
-                  >
-                    {productTag.label}
-                  </span>
-                )}
-              </div>
-            </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <StarRating value={product.average_rating || 0} />
+                    <small className="text-caption-sm text-slate-500">
+                      ({product.review_count || 0})
+                    </small>
+                  </div>
 
-            <span className="absolute inset-x-0 bottom-0 h-px pointer-events-none bg-linear-to-r from-transparent via-blue-600/45 to-transparent opacity-70" />
+                  {productTag && (
+                    <span
+                      className={`inline-flex items-center rounded px-2.5 py-1 text-caption-sm font-extrabold tracking-wide ${productTag.className}`}
+                    >
+                      {productTag.label}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <span className="absolute inset-x-0 bottom-0 h-px pointer-events-none bg-linear-to-r from-transparent via-blue-600/45 to-transparent opacity-70" />
             </article>
           )
         })}

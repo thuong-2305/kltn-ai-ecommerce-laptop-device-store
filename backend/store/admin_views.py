@@ -619,6 +619,7 @@ def admin_order_detail(request, pk):
             'date_ordered': order.date_ordered.strftime('%d/%m/%Y %H:%M'),
             'shipping_tracking_code': order.shipping_tracking_code or '',
             'shipped': order.shipped,
+            'cancel_reason': order.cancel_reason or '',
             'items': items
         })
 
@@ -627,6 +628,7 @@ def admin_order_detail(request, pk):
         status_val = data.get('status')
         is_paid = data.get('is_paid')
         tracking_code = data.get('shipping_tracking_code')
+        cancel_reason = data.get('cancel_reason')
 
         try:
             with transaction.atomic():
@@ -647,6 +649,8 @@ def admin_order_detail(request, pk):
                     order.is_paid = str(is_paid).lower() == 'true'
                 if tracking_code is not None:
                     order.shipping_tracking_code = tracking_code
+                if status_val == 'cancelled' and cancel_reason:
+                    order.cancel_reason = cancel_reason
                     
                 order.save()
             return Response({'success': True, 'message': 'Cập nhật đơn hàng thành công.'})
@@ -870,7 +874,7 @@ def admin_users(request):
         'results': results
     })
 
-@api_view(['PUT', 'DELETE'])
+@api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAdminUser])
 @authentication_classes([JWTAuthentication])
 def admin_user_detail(request, pk):
@@ -879,7 +883,32 @@ def admin_user_detail(request, pk):
     except User.DoesNotExist:
         return Response({'error': 'Người dùng không tồn tại'}, status=404)
 
-    if request.method == 'PUT':
+    if request.method == 'GET':
+        orders_qs = Order.objects.filter(user=user_obj).order_by('-date_ordered')
+        orders_list = []
+        for o in orders_qs:
+            orders_list.append({
+                'id': o.id,
+                'order_code': o.order_code or f"#{o.id}",
+                'amount_paid': float(o.amount_paid),
+                'status': o.status,
+                'status_display': o.get_status_display(),
+                'is_paid': o.is_paid,
+                'date_ordered': o.date_ordered.strftime('%d/%m/%Y %H:%M')
+            })
+        return Response({
+            'id': user_obj.id,
+            'name': f"{user_obj.last_name} {user_obj.first_name}".strip() or user_obj.username,
+            'email': user_obj.email,
+            'username': user_obj.username,
+            'phone': user_obj.phone or '',
+            'status': 'active' if user_obj.is_active else 'inactive',
+            'role': 'Quản trị viên' if user_obj.is_staff else 'Khách hàng',
+            'date_joined': user_obj.date_joined.strftime('%d/%m/%Y %H:%M') if user_obj.date_joined else '',
+            'orders': orders_list
+        })
+
+    elif request.method == 'PUT':
         data = request.data
         is_active = data.get('is_active')
         is_staff = data.get('is_staff')

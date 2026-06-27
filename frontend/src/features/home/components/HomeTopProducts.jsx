@@ -264,13 +264,6 @@ function HomeTopProducts({ products = [] }) {
                             </small>
                           </div>
 
-                          {productTag && (
-                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-caption-sm font-extrabold tracking-wide ${productTag.className}`}
-                            >
-                              {productTag.label}
-                            </span>
-                          )}
                         </div>
                       </div>
 
