@@ -275,6 +275,9 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@ecommerce.co
 if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
+
 
 # Use SQLite for running tests to avoid connecting to/altering remote MySQL DB
 import sys

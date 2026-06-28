@@ -14,6 +14,8 @@ export const authApi = {
     api.get('/me/', { headers: { Authorization: `Bearer ${accessToken}` } }).then(r => r.data),
   googleOAuth: (id_token) => api.post('/google/', { id_token }).then(r => r.data),
   sendOTP: (email) => api.post('/otp/send/', { email }).then(r => r.data),
+  forgotPassword: (email) => api.post('/password/forgot/', { email }).then(r => r.data),
+  resetPassword: (data) => api.post('/password/reset/', data).then(r => r.data),
 
   // ── Profile ─────────────────────────────────────────────────
   getProfile: (token) =>

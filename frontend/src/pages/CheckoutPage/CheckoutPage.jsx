@@ -20,9 +20,6 @@ const WARDS = ['Phường 1', 'Phường 2', 'Phường 3', 'Phường Bến Ngh
 
 const PAYMENT_METHODS = [
   { id: 'cod',   label: 'Thanh toán khi nhận hàng (COD)', sub: 'Thanh toán bằng tiền mặt khi nhận hàng', icon: <Banknote size={20} className="text-blue-650 shrink-0" /> },
-  { id: 'bank',  label: 'Chuyển khoản ngân hàng', sub: 'Thanh toán bằng chuyển khoản qua ngân hàng', icon: <Landmark size={20} className="text-blue-650 shrink-0" /> },
-  { id: 'atm',   label: 'Thẻ ATM / Internet Banking', sub: 'Thanh toán qua Napas', icon: <CreditCard size={20} className="text-blue-650 shrink-0" /> },
-  { id: 'card',  label: 'Thẻ tín dụng / Thẻ ghi nợ', sub: 'Visa, MasterCard, JCB, Amex', icon: <CreditCard size={20} className="text-blue-650 shrink-0" /> },
   { id: 'ewallet', label: 'Ví điện tử', sub: 'ZaloPay, VNPay, ShopeePay', icon: <Smartphone size={20} className="text-blue-650 shrink-0" /> },
 ]
 
