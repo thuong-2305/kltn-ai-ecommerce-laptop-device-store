@@ -173,8 +173,11 @@ class ForgotPasswordView(APIView):
             token = default_token_generator.make_token(user)
             from django.conf import settings
             
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            reset_url = f"{frontend_url}/reset-password?token={token}&email={email}"
+            
             subject = "Yêu cầu khôi phục mật khẩu"
-            message = f"Xin chào,\n\nBạn nhận được email này vì đã yêu cầu khôi phục mật khẩu cho tài khoản của mình. Mã xác nhận khôi phục mật khẩu của bạn là:\n\n{token}\n\nVui lòng sử dụng mã này để đặt lại mật khẩu của bạn."
+            message = f"Xin chào,\n\nBạn nhận được email này vì đã yêu cầu khôi phục mật khẩu cho tài khoản của mình. Vui lòng truy cập liên kết sau để đặt lại mật khẩu của bạn:\n\n{reset_url}\n\nLiên kết này sẽ hết hạn sau khi sử dụng hoặc sau khi yêu cầu mới được tạo."
             try:
                 send_mail(
                     subject,

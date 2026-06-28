@@ -12,9 +12,14 @@ function FilterSidebar({
   filters, 
   onFilterChange, 
   onReset, 
+  onApplyFilters,
   isOpen, 
   onClose 
 }) {
+  const handleApply = () => {
+    if (onApplyFilters) onApplyFilters()
+    if (onClose) onClose()
+  }
   const [expandedGroups, setExpandedGroups] = useState({
     price: true,
     brand: true,
@@ -456,6 +461,16 @@ function FilterSidebar({
                   })}
                 </div>
               </FilterSection>
+            </div>
+            {/* Apply Button Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 rounded-b-xl">
+              <button
+                type="button"
+                onClick={handleApply}
+                className="w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
+              >
+                Áp dụng bộ lọc
+              </button>
             </div>
           </div>
         </div>

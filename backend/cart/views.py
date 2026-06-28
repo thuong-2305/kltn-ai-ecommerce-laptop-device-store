@@ -108,8 +108,12 @@ def cart_add_api(request):
         variant = get_object_or_404(ProductVariant, id=variant_id, product=product)
 
     cart = Cart(request)
-    msg = cart.add(product=product, quantity=qty, variant=variant)
-    return Response({**_serialize_cart(request, cart), 'message': msg})
+    try:
+        msg = cart.add(product=product, quantity=qty, variant=variant)
+        return Response({**_serialize_cart(request, cart), 'message': msg})
+    except ValueError as e:
+        return Response({'error': str(e)}, status=400)
+
 
 
 # ─── POST /api/cart/update/ ──────────────────────────────────────

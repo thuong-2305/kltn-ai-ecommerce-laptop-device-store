@@ -62,7 +62,7 @@
     max-width: 1280px;
     margin: 0 auto;
     background: #ffffff;
-    box-shadow: 0 0 0 1px rgba(148,163,184,0.12), 0 4px 32px rgba(15,23,42,0.06);
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.12), 0 4px 32px rgba(15, 23, 42, 0.06);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -230,7 +230,7 @@
 
   .promo-card__copy,
   .news-card__body,
-  .footer-grid > div {
+  .footer-grid>div {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -538,6 +538,7 @@
       opacity: 0;
       filter: blur(4px);
     }
+
     to {
       transform: translateY(0) scale(1);
       opacity: 1;

@@ -275,6 +275,9 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@ecommerce.co
 if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
+
 
 # Use SQLite for running tests to avoid connecting to/altering remote MySQL DB
 import sys
@@ -298,6 +301,10 @@ FRONTEND_PAYMENT_RESULT_URL = config('FRONTEND_PAYMENT_RESULT_URL', default='htt
 GHN_TOKEN = config('GHN_TOKEN', default='')
 GHN_SHOP_ID = config('GHN_SHOP_ID', default='')
 GHN_API_URL = config('GHN_API_URL', default='https://dev-online-gateway.ghn.vn/shiip/public-api/v2/')
+
+
+# Hugging Face Access Token for private repositories
+HF_TOKEN = config('HF_TOKEN', default='')
 
 
 # ─── Logging Configuration ───────────────────────────────────────────────
@@ -377,8 +384,8 @@ LOGGING = {
 # ─── JAZZMIN ADMINISTRATION TEMPLATE CONFIGURATION ──────────────────────
 JAZZMIN_SETTINGS = {
     "site_title": "Laptop Device Store Admin",
-    "site_header": "TechZone Admin",
-    "site_brand": "TechZone",
+    "site_header": "LaptopDevice Admin",
+    "site_brand": "LaptopDevice",
     "welcome_sign": "Chào mừng bạn đến với trang quản trị Laptop Device Store",
     "copyright": "Laptop Device Store Ltd",
     "user_avatar": None,

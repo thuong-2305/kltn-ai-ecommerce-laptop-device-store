@@ -37,11 +37,11 @@ export default function AdminSettingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">Tên cửa hàng</label>
-                  <input type="text" defaultValue="TechZone Store" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
+                  <input type="text" defaultValue="LaptopDevice Store" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">Email liên hệ</label>
-                  <input type="email" defaultValue="contact@techzone.vn" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
+                  <input type="email" defaultValue="contact@laptopdevice.vn" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
                 </div>
               </div>
               <div>
@@ -56,11 +56,11 @@ export default function AdminSettingsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Facebook URL</label>
-                <input type="text" defaultValue="https://facebook.com/techzone" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
+                <input type="text" defaultValue="https://facebook.com/laptopdevice" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Instagram URL</label>
-                <input type="text" defaultValue="https://instagram.com/techzone" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
+                <input type="text" defaultValue="https://instagram.com/laptopdevice" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500" />
               </div>
             </div>
           </div>

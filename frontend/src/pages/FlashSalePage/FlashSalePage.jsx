@@ -45,6 +45,28 @@ export default function FlashSalePage() {
     updateFilters({ sortBy: 'newest' })
   }, [updateFilters])
 
+  // Lập danh sách sản phẩm với giá giảm thực tế hoặc giả lập chiết khấu cho Flash Sale
+  const flashSaleProducts = products.map(product => {
+    const originalPrice = product.price || 0
+    const isRealSale = product.is_sale && product.sale_price && Number(product.sale_price) < Number(originalPrice)
+    
+    if (isRealSale) {
+      return product
+    }
+    
+    // Giả lập mức giảm từ 10% - 24% cho các sản phẩm chưa có sale trong DB
+    const seed = product.id ? Number(product.id) || product.name.length : 7
+    const discount = (seed % 15) + 10
+    const simulatedSalePrice = Math.floor(originalPrice * (100 - discount) / 100)
+    
+    return {
+      ...product,
+      is_sale: true,
+      sale_price: simulatedSalePrice,
+      discount_percentage: discount
+    }
+  })
+
   return (
     <div className="mx-4.5 py-6 pb-16">
       {/* Breadcrumb */}
@@ -120,7 +142,7 @@ export default function FlashSalePage() {
 
         {!loading && !error && products.length > 0 && (
           <ProductGrid
-            products={products}
+            products={flashSaleProducts}
             loading={loading}
             onAddToCart={() => {}}
             onAddToWishlist={() => {}}

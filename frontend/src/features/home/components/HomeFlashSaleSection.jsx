@@ -35,23 +35,35 @@ function useFakeCountdown() {
 }
 
 function FlashSaleCard({ product }) {
+  const originalPrice = product.price || 0
+  
+  // Chỉ coi là có giảm giá thực tế nếu is_sale là true và sale_price nhỏ hơn price gốc
+  const isRealSale = product.is_sale && product.sale_price && Number(product.sale_price) < Number(originalPrice)
+
   // Giả lập dữ liệu Flash Sale nếu API chưa có - sử dụng useMemo để tránh việc phần trăm/giá thay đổi liên tục theo mỗi giây của đồng hồ đếm ngược
   const discount = useMemo(() => {
-    if (product.discount_percentage) return product.discount_percentage
+    if (isRealSale) {
+      if (product.discount_percentage && product.discount_percentage > 0) {
+        return product.discount_percentage
+      }
+      return Math.round((1 - Number(product.sale_price) / Number(originalPrice)) * 100)
+    }
     // Tạo phần trăm giảm giá cố định dựa theo product.id để tránh ngẫu nhiên thay đổi mỗi lần re-render
     const seed = product.id ? Number(product.id) || product.name.length : 7
     return (seed % 15) + 10 // 10-24%
-  }, [product.discount_percentage, product.id, product.name])
+  }, [isRealSale, product.discount_percentage, product.sale_price, originalPrice, product.id, product.name])
 
   const soldPercent = useMemo(() => {
     const seed = product.id ? Number(product.id) || product.name.length : 7
     return (seed % 50) + 40 // 40-89% cố định
   }, [product.id, product.name])
   
-  const originalPrice = product.price || 0
   const salePrice = useMemo(() => {
-    return product.sale_price || Math.floor(originalPrice * (100 - discount) / 100)
-  }, [product.sale_price, originalPrice, discount])
+    if (isRealSale) {
+      return product.sale_price
+    }
+    return Math.floor(originalPrice * (100 - discount) / 100)
+  }, [isRealSale, product.sale_price, originalPrice, discount])
 
   return (
     <div className="bg-white rounded-xl p-3 flex flex-col relative border-2 border-transparent hover:border-blue-500 transition-all duration-300 group shadow-sm h-full">
@@ -111,9 +123,14 @@ export default function HomeFlashSaleSection({ products = [] }) {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
         {/* Header Section */}
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-5 mb-5 md:mb-6">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[22px] md:text-[26px] font-black text-white uppercase tracking-tight">DEAL HOT GIỜ VÀNG</h2>
-            <Zap className="text-yellow-300 fill-yellow-300 w-7 h-7 filter drop-shadow-[0_0_8px_rgba(253,224,71,0.8)] animate-pulse shrink-0" />
+          <div className="flex items-center gap-3.5 flex-wrap">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[22px] md:text-[26px] font-black text-white uppercase tracking-tight">DEAL HOT GIỜ VÀNG</h2>
+              <Zap className="text-yellow-300 fill-yellow-300 w-7 h-7 filter drop-shadow-[0_0_8px_rgba(253,224,71,0.8)] animate-pulse shrink-0" />
+            </div>
+            <Link to="/flash-sale" className="text-xs font-black bg-white/10 hover:bg-white/20 text-white hover:text-yellow-300 transition-all border border-white/25 hover:border-yellow-300/30 px-3 py-1.5 rounded-full select-none">
+              XEM TẤT CẢ
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
