@@ -30,6 +30,9 @@ def _serialize_cart(request, cart):
         v.id: v for v in ProductVariant.objects.filter(id__in=all_vids)
     } if all_vids else {}
 
+    from store.views import _get_active_sales
+    _, active_sales_by_category = _get_active_sales()
+
     items = []
     for key, qty in cart.cart.items():
         pid, vid = parse_session_key(key)
@@ -40,13 +43,21 @@ def _serialize_cart(request, cart):
         variant = variants_map.get(vid) if vid else None
 
         if variant:
-            price = float(variant.price)
             name = f"{product.name} ({variant.name})"
             sku = variant.sku
         else:
-            price = float(product.sale_price if product.is_sale and product.sale_price else product.price)
             name = product.name
             sku = None
+
+        sale = active_sales_by_category.get(product.category_id)
+        base_price = float(product.price or 0)
+        if sale is not None:
+            discount_percentage = float(sale.discount_percentage)
+            price = round(base_price * (1 - discount_percentage / 100), 2)
+        elif product.is_sale and product.sale_price:
+            price = float(product.sale_price)
+        else:
+            price = base_price
 
         items.append({
             'product_id': pid,

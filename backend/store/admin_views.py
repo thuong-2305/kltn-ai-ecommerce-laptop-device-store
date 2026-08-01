@@ -127,7 +127,7 @@ def admin_dashboard_stats(request):
                 'sColor': 'text-blue-600 bg-blue-50' if order.status == 'shipping' else 
                           ('text-green-600 bg-green-50' if order.status == 'delivered' else 
                            ('text-red-600 bg-red-50' if order.status == 'cancelled' else 'text-yellow-600 bg-yellow-50')),
-                'date': order.date_ordered.strftime('%d/%m/%Y %H:%M')
+                'date': timezone.localtime(order.date_ordered).strftime('%d/%m/%Y %H:%M')
             })
 
         # Top products
@@ -233,7 +233,7 @@ def admin_revenue_stats(request):
                 'phone': order.phone,
                 'amount': float(order.amount_paid),
                 'amount_str': f"{order.amount_paid:,.0f} đ".replace(',', '.'),
-                'date': order.date_ordered.strftime('%d/%m/%Y %H:%M'),
+                'date': timezone.localtime(order.date_ordered).strftime('%d/%m/%Y %H:%M'),
                 'status': order.get_status_display()
             })
             
@@ -573,7 +573,7 @@ def admin_orders(request):
             'pStatus': 'paid' if order.is_paid else 'unpaid',
             'status': order.get_status_display(),
             'sStatus': order.status,
-            'date': order.date_ordered.strftime('%d/%m/%Y %H:%M')
+            'date': timezone.localtime(order.date_ordered).strftime('%d/%m/%Y %H:%M')
         })
     return Response({
         'count': paginator.count,
@@ -616,7 +616,7 @@ def admin_order_detail(request, pk):
             'voucher_code': order.voucher.code if order.voucher else None,
             'is_paid': order.is_paid,
             'status': order.status,
-            'date_ordered': order.date_ordered.strftime('%d/%m/%Y %H:%M'),
+            'date_ordered': timezone.localtime(order.date_ordered).strftime('%d/%m/%Y %H:%M'),
             'shipping_tracking_code': order.shipping_tracking_code or '',
             'shipped': order.shipped,
             'cancel_reason': order.cancel_reason or '',
@@ -894,7 +894,7 @@ def admin_user_detail(request, pk):
                 'status': o.status,
                 'status_display': o.get_status_display(),
                 'is_paid': o.is_paid,
-                'date_ordered': o.date_ordered.strftime('%d/%m/%Y %H:%M')
+                'date_ordered': timezone.localtime(o.date_ordered).strftime('%d/%m/%Y %H:%M')
             })
         return Response({
             'id': user_obj.id,
@@ -904,7 +904,7 @@ def admin_user_detail(request, pk):
             'phone': user_obj.phone or '',
             'status': 'active' if user_obj.is_active else 'inactive',
             'role': 'Quản trị viên' if user_obj.is_staff else 'Khách hàng',
-            'date_joined': user_obj.date_joined.strftime('%d/%m/%Y %H:%M') if user_obj.date_joined else '',
+            'date_joined': timezone.localtime(user_obj.date_joined).strftime('%d/%m/%Y %H:%M') if user_obj.date_joined else '',
             'orders': orders_list
         })
 

@@ -85,37 +85,46 @@ class Cart():
         return len(self.cart)
 
     def total(self):
+        from store.views import _get_active_sales
+        _, active_sales_by_category = _get_active_sales()
+
         total = 0
         if self.request.user.is_authenticated:
             items = self.db_cart.items.select_related('product', 'variant')
             for item in items:
-                price = item.variant.price if item.variant else (item.product.sale_price if item.product.is_sale and item.product.sale_price else item.product.price)
+                product = item.product
+                sale = active_sales_by_category.get(product.category_id)
+                base_price = float(product.price or 0)
+                if sale is not None:
+                    discount_percentage = float(sale.discount_percentage)
+                    price = round(base_price * (1 - discount_percentage / 100), 2)
+                elif product.is_sale and product.sale_price:
+                    price = float(product.sale_price)
+                else:
+                    price = base_price
                 total += price * item.quantity
         else:
-            # Batch fetch to avoid N+1 queries
             all_pids = set()
-            all_vids = set()
             for key in self.cart.keys():
-                pid, vid = parse_session_key(key)
+                pid, _ = parse_session_key(key)
                 all_pids.add(pid)
-                if vid:
-                    all_vids.add(vid)
             
             products_map = {p.id: p for p in Product.objects.filter(id__in=all_pids)}
-            variants_map = {v.id: v for v in ProductVariant.objects.filter(id__in=all_vids)} if all_vids else {}
 
             for key, qty in self.cart.items():
-                pid, vid = parse_session_key(key)
+                pid, _ = parse_session_key(key)
                 product = products_map.get(pid)
                 if not product:
                     continue
-                if vid:
-                    variant = variants_map.get(vid)
-                    if not variant:
-                        continue
-                    price = variant.price
+                sale = active_sales_by_category.get(product.category_id)
+                base_price = float(product.price or 0)
+                if sale is not None:
+                    discount_percentage = float(sale.discount_percentage)
+                    price = round(base_price * (1 - discount_percentage / 100), 2)
+                elif product.is_sale and product.sale_price:
+                    price = float(product.sale_price)
                 else:
-                    price = product.sale_price if product.is_sale and product.sale_price else product.price
+                    price = base_price
                 total += price * qty
         return total
 

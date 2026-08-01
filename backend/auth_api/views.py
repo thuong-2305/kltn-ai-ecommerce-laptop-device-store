@@ -100,27 +100,46 @@ class GoogleOAuthView(APIView):
 
     def post(self, request):
         id_token_str = request.data.get('id_token', '')
-        if not id_token_str:
-            return Response({'error': 'Thiếu Google id_token'}, status=status.HTTP_400_BAD_REQUEST)
+        access_token_str = request.data.get('access_token', '')
+
+        if not id_token_str and not access_token_str:
+            return Response({'error': 'Thiếu Google token'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            from google.oauth2 import id_token as google_id_token
-            from google.auth.transport import requests as google_requests
             from django.conf import settings
-
             client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None)
             if not client_id:
                 return Response({'error': 'Google OAuth chưa được cấu hình trên server'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-            idinfo = google_id_token.verify_oauth2_token(
-                id_token_str,
-                google_requests.Request(),
-                client_id,
-            )
+            email = None
+            first_name = ''
+            last_name = ''
 
-            email = idinfo.get('email', '').lower()
-            first_name = idinfo.get('given_name', '')
-            last_name = idinfo.get('family_name', '')
+            if id_token_str:
+                from google.oauth2 import id_token as google_id_token
+                from google.auth.transport import requests as google_requests
+                idinfo = google_id_token.verify_oauth2_token(
+                    id_token_str,
+                    google_requests.Request(),
+                    client_id,
+                )
+                email = idinfo.get('email', '').lower()
+                first_name = idinfo.get('given_name', '')
+                last_name = idinfo.get('family_name', '')
+            elif access_token_str:
+                import urllib.request
+                import json
+                req = urllib.request.Request(
+                    'https://www.googleapis.com/oauth2/v3/userinfo',
+                    headers={'Authorization': f'Bearer {access_token_str}'}
+                )
+                with urllib.request.urlopen(req) as resp:
+                    if resp.status != 200:
+                        return Response({'error': 'Token Google không hợp lệ hoặc đã hết hạn'}, status=status.HTTP_401_UNAUTHORIZED)
+                    userinfo = json.loads(resp.read().decode('utf-8'))
+                    email = userinfo.get('email', '').lower()
+                    first_name = userinfo.get('given_name', '')
+                    last_name = userinfo.get('family_name', '')
 
             if not email:
                 return Response({'error': 'Không lấy được email từ Google'}, status=status.HTTP_400_BAD_REQUEST)

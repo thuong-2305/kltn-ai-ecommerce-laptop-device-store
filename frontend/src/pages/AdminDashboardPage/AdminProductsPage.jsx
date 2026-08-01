@@ -322,21 +322,27 @@ export default function AdminProductsPage() {
       {/* Data Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-w-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-4 px-6">Sản phẩm</th>
-                <th className="py-4 px-6">Danh mục</th>
-                <th className="py-4 px-6">Thương hiệu</th>
-                <th className="py-4 px-6">Giá bán</th>
-                <th className="py-4 px-6">Tồn kho</th>
-                <th className="py-4 px-6">Trạng thái</th>
-                <th className="py-4 px-6 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {products.length > 0 ? (
-                products.map((prod) => {
+          {loading && products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
+              <p className="text-slate-500 text-sm font-semibold">Đang tải danh sách sản phẩm...</p>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-4 px-6">Sản phẩm</th>
+                  <th className="py-4 px-6">Danh mục</th>
+                  <th className="py-4 px-6">Thương hiệu</th>
+                  <th className="py-4 px-6">Giá bán</th>
+                  <th className="py-4 px-6">Tồn kho</th>
+                  <th className="py-4 px-6">Trạng thái</th>
+                  <th className="py-4 px-6 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {products.length > 0 ? (
+                  products.map((prod) => {
                   const cfg = STATUS_CONFIG[prod.status] || STATUS_CONFIG.active
                   return (
                     <tr key={prod.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -403,6 +409,7 @@ export default function AdminProductsPage() {
               )}
             </tbody>
           </table>
+          )}
         </div>
 
         {/* Pagination Footer */}

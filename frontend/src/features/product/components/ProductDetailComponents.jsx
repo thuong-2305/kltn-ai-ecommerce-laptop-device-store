@@ -28,7 +28,7 @@ export function ProductImageGallery({ image, thumbnails = [], name }) {
   return (
     <div className="flex flex-col gap-4">
       {/* Main image */}
-      <div 
+      <div
         ref={containerRef}
         onMouseEnter={() => setZoom(true)}
         onMouseLeave={() => setZoom(false)}
@@ -115,19 +115,16 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist, onBuyNow })
     return product.variants && product.variants.length > 0 ? product.variants[0] : null
   })
 
-  // Dynamic price based on selected variant or product base price
-  const salePrice = activeVariant ? activeVariant.price : (product.sale_price ?? product.price)
-  const originalPrice = activeVariant ? activeVariant.price : product.price
-  const discountPercentage = activeVariant ? 0 : (product.discount_percentage || 0)
-  const hasDiscount = !activeVariant && discountPercentage > 0
+  const discountPercentage = product.discount_percentage || 0
+  const hasDiscount = discountPercentage > 0
+  const originalPrice = product.price
+  const salePrice = product.sale_price ?? product.price
 
-  // Hide the variant selector if there is only 1 variant and it has a default name
   const shouldShowVariantSelector = product.variants && product.variants.length > 0 && !(
-    product.variants.length === 1 && 
+    product.variants.length === 1 &&
     (product.variants[0].name.toLowerCase() === 'mặc định' || product.variants[0].name.toLowerCase() === 'default')
   )
 
-  // Keep qty in sync when the selected variant changes
   useEffect(() => {
     if (activeVariant) {
       if (activeVariant.stock <= 0) {
@@ -198,8 +195,8 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist, onBuyNow })
                   key={v.id}
                   onClick={() => setActiveVariant(v)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${isActive
-                      ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-350'
+                    ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-350'
                     }`}
                 >
                   {v.name}
@@ -236,8 +233,8 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist, onBuyNow })
 
         {activeVariant && (
           <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${activeVariant.stock > 0
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-red-50 text-red-700 border border-red-200'
+            ? 'bg-green-50 text-green-700 border border-green-200'
+            : 'bg-red-50 text-red-700 border border-red-200'
             }`}>
             {activeVariant.stock > 0 ? `Còn hàng (${activeVariant.stock})` : 'Hết hàng'}
           </span>
@@ -259,8 +256,8 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist, onBuyNow })
               onClick={handleBuyNowClick}
               disabled={activeVariant && activeVariant.stock <= 0}
               className={`flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md hover:shadow-lg ${activeVariant && activeVariant.stock <= 0
-                  ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
-                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600'
+                ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
+                : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600'
                 }`}
             >
               <Zap size={18} className="fill-current" />
@@ -270,8 +267,8 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist, onBuyNow })
               onClick={handleCartClick}
               disabled={activeVariant && activeVariant.stock <= 0}
               className={`flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md hover:shadow-lg ${activeVariant && activeVariant.stock <= 0
-                  ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                ? 'bg-slate-300 cursor-not-allowed shadow-none hover:shadow-none'
+                : 'bg-blue-600 hover:bg-blue-700'
                 }`}
             >
               <ShoppingCart size={18} />
@@ -282,8 +279,8 @@ export function ProductInfo({ product, onAddToCart, onAddToWishlist, onBuyNow })
         <button
           onClick={() => { setWishlisted((w) => !w); onAddToWishlist?.(product) }}
           className={`h-12 px-5 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${wishlisted
-              ? 'border-red-500 text-red-500 bg-red-50'
-              : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+            ? 'border-red-500 text-red-500 bg-red-50'
+            : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
             }`}
         >
           <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />
@@ -565,16 +562,16 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
           {reviews.map((review) => {
             const commentStr = review.comment || ''
             const hasNewline = commentStr.includes('\n')
-            
+
             let title = ''
             let body = commentStr
-            
+
             if (hasNewline) {
               const parts = commentStr.split('\n')
               title = parts[0]
               body = parts.slice(1).join('\n').trim()
             }
-            
+
             return (
               <div key={review.id} className="p-5 bg-white rounded-xl border border-slate-200 hover:shadow-sm transition-all">
                 <div className="flex items-start justify-between gap-4 mb-3">

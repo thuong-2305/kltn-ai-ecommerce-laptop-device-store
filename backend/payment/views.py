@@ -289,6 +289,9 @@ def api_order_create(request):
     from decimal import Decimal
     try:
         with transaction.atomic():
+            from store.views import _get_active_sales
+            _, active_sales_by_category = _get_active_sales()
+
             # 1. Lock and validate stock for all items
             items_to_create = []
             for key, qty in list(cart.cart.items()):
@@ -313,9 +316,16 @@ def api_order_create(request):
                     # Deduct stock
                     variant.stock -= qty
                     variant.save()
-                    price = variant.price
+
+                sale = active_sales_by_category.get(product.category_id)
+                base_price = float(product.price or 0)
+                if sale is not None:
+                    discount_percentage = float(sale.discount_percentage)
+                    price = round(base_price * (1 - discount_percentage / 100), 2)
+                elif product.is_sale and product.sale_price:
+                    price = float(product.sale_price)
                 else:
-                    price = product.sale_price if product.is_sale else product.price
+                    price = base_price
 
                 items_to_create.append({
                     'product': product,
@@ -532,9 +542,9 @@ def api_order_history(request):
             'phone': order.phone,
             'shipping_address': order.shipping_address,
             'amount_paid': float(order.amount_paid),
-            'date_ordered': order.date_ordered.isoformat() if order.date_ordered else None,
+            'date_ordered': timezone.localtime(order.date_ordered).isoformat() if order.date_ordered else None,
             'shipped': order.shipped,
-            'date_shipped': order.date_shipped.isoformat() if order.date_shipped else None,
+            'date_shipped': timezone.localtime(order.date_shipped).isoformat() if order.date_shipped else None,
             'status': order.status,
             'items': items_list
         })
@@ -575,9 +585,9 @@ def api_order_detail(request, pk):
         'phone': order.phone,
         'shipping_address': order.shipping_address,
         'amount_paid': float(order.amount_paid),
-        'date_ordered': order.date_ordered.isoformat() if order.date_ordered else None,
+        'date_ordered': timezone.localtime(order.date_ordered).isoformat() if order.date_ordered else None,
         'shipped': order.shipped,
-        'date_shipped': order.date_shipped.isoformat() if order.date_shipped else None,
+        'date_shipped': timezone.localtime(order.date_shipped).isoformat() if order.date_shipped else None,
         'status': order.status,
         'items': items_list
     })
