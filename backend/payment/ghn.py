@@ -160,9 +160,9 @@ def create_ghn_shipping_order(order):
 
     payload = {
         "payment_type_id": 2,  # Seller pays shipping fee
-        "note": f"TechZone Store - Đơn hàng {order.order_code}",
+        "note": f"LaptopDevice Store - Đơn hàng {order.order_code}",
         "required_note": "KHONGCHOXEMHANG",
-        "from_name": "TechZone Store",
+        "from_name": "LaptopDevice Store",
         "from_phone": "0909999999",
         "from_address": "72 Lê Lợi, Phường Bến Nghé, Quận 1, TP Hồ Chí Minh",
         "from_ward_code": "20314",

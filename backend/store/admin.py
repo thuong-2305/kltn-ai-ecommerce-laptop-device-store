@@ -38,7 +38,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 class ReviewAdmin(admin.ModelAdmin):
     list_select_related = ('user', 'product')
-    list_display = ('id', 'user', 'product', 'rating', 'sentiment', 'review_date')
+    list_display = ('id', 'user', 'product', 'rating', 'sentiment', 'is_spam', 'review_date')
     list_filter = ('rating', 'sentiment', 'is_spam', 'review_date')
     search_fields = ('user__username', 'product__name', 'comment')
 

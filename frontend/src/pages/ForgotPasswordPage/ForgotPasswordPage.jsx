@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, ChevronLeft, Send, CheckCircle2, AlertCircle, Loader2, KeyRound } from 'lucide-react'
+import { authApi } from '../../services/authApi'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('idle') // idle, loading, success, error
   const [errorMsg, setErrorMsg] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setStatus('error')
@@ -16,10 +17,13 @@ export default function ForgotPasswordPage() {
     }
     
     setStatus('loading')
-    // Giả lập gọi API gửi email khôi phục
-    setTimeout(() => {
+    try {
+      await authApi.forgotPassword(email)
       setStatus('success')
-    }, 1500)
+    } catch (err) {
+      setStatus('error')
+      setErrorMsg(err.response?.data?.error || 'Đã xảy ra lỗi khi gửi yêu cầu khôi phục mật khẩu.')
+    }
   }
 
   return (

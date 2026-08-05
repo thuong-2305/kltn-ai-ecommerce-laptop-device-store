@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Lock, Eye, EyeOff, ChevronLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { authApi } from '../../services/authApi'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
+  const email = searchParams.get('email')
   const navigate = useNavigate()
 
   const [form, setForm] = useState({ password: '', confirm: '' })
@@ -14,7 +16,7 @@ export default function ResetPasswordPage() {
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     
     if (!form.password) {
@@ -28,15 +30,22 @@ export default function ResetPasswordPage() {
     }
 
     setStatus('loading')
-    
-    // Giả lập gọi API đặt lại mật khẩu với token
-    setTimeout(() => {
+    try {
+      await authApi.resetPassword({
+        email,
+        token,
+        new_password: form.password,
+        confirm_password: form.confirm
+      })
       setStatus('success')
-    }, 1500)
+    } catch (err) {
+      setStatus('error')
+      setErrorMsg(err.response?.data?.error || 'Đã xảy ra lỗi khi đặt lại mật khẩu.')
+    }
   }
 
-  // Nếu không có token trong URL, chặn truy cập
-  if (!token) {
+  // Nếu không có token hoặc email trong URL, chặn truy cập
+  if (!token || !email) {
     return (
       <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200/80 p-8 text-center">
@@ -45,7 +54,7 @@ export default function ResetPasswordPage() {
           </div>
           <h1 className="text-xl font-black text-slate-900 mb-2">Liên kết không hợp lệ</h1>
           <p className="text-sm text-slate-500 mb-6">
-            Liên kết đặt lại mật khẩu này không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu một liên kết mới.
+            Liên kết đặt lại mật khẩu này không hợp lệ hoặc thiếu thông tin cần thiết. Vui lòng yêu cầu một liên kết mới.
           </p>
           <Link to="/forgot-password" className="inline-flex items-center justify-center w-full h-11 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md hover:bg-blue-700 transition-all">
             Yêu cầu lại liên kết

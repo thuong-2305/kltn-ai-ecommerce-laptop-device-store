@@ -27,11 +27,10 @@ function PaymentResultPage() {
         const token = localStorage.getItem('ld_access')
         const headers = token ? { Authorization: `Bearer ${token}` } : {}
         
-        // Find order in history
-        const res = await axios.get('http://localhost:8000/api/payment/orders/history/', { headers })
-        const found = res.data.find(o => o.order_code === orderCode)
-        if (found) {
-          setOrder(found)
+        // Fetch order details directly by order code
+        const res = await axios.get(`http://localhost:8000/api/payment/orders/${orderCode}/detail/`, { headers })
+        if (res.data) {
+          setOrder(res.data)
         }
       } catch (err) {
         console.error('Error fetching order details:', err)

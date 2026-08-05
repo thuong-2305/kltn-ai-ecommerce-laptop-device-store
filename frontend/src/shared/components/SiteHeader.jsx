@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { MdSearch, MdPersonOutline, MdShoppingCart, MdLogout, MdSettings, MdReceipt, MdFavoriteBorder, MdOutlinePhotoCamera } from 'react-icons/md'
+import { MdSearch, MdPersonOutline, MdShoppingCart, MdLogout, MdSettings, MdReceipt, MdFavoriteBorder, MdOutlinePhotoCamera, MdDashboard } from 'react-icons/md'
 import { SEMANTIC_CLASSES, COLOR_ACCENTS, COMMON_STYLES } from '../../constants/designSystem'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -67,6 +67,7 @@ function UserDropdown({ user, onLogout }) {
             {[
               { icon: MdReceipt, label: 'Đơn hàng của tôi', href: '/profile?tab=orders' },
               { icon: MdSettings, label: 'Cài đặt tài khoản', href: '/profile' },
+              ...((user.is_staff || user.is_superuser) ? [{ icon: MdDashboard, label: 'Trang quản trị (Admin)', href: '/admin' }] : []),
             ].map(({ icon: Icon, label, href }) => (
               <Link
                 key={href}
@@ -182,7 +183,7 @@ function SiteHeader({ categories = [], cartCount = 0 }) {
             id="site-search" type="search"
             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Bạn cần tìm gì?"
-            className={`${COMMON_STYLES.searchBar.input} pr-10`}
+            className={`${COMMON_STYLES.searchBar.input} w-full pr-12`}
           />
           <button
             type="button"

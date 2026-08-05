@@ -46,11 +46,10 @@ const AdminOrdersPage = lazy(() => import('../../pages/AdminDashboardPage/AdminO
 const AdminCustomersPage = lazy(() => import('../../pages/AdminDashboardPage/AdminCustomersPage'))
 const AdminCategoriesPage = lazy(() => import('../../pages/AdminDashboardPage/AdminCategoriesPage'))
 const AdminVouchersPage = lazy(() => import('../../pages/AdminDashboardPage/AdminVouchersPage'))
-const AdminPostsPage = lazy(() => import('../../pages/AdminDashboardPage/AdminPostsPage'))
 const AdminCommentsPage = lazy(() => import('../../pages/AdminDashboardPage/AdminCommentsPage'))
+const AdminSentimentPage = lazy(() => import('../../pages/AdminDashboardPage/AdminSentimentPage'))
 const AdminUsersPage = lazy(() => import('../../pages/AdminDashboardPage/AdminUsersPage'))
 const AdminSettingsPage = lazy(() => import('../../pages/AdminDashboardPage/AdminSettingsPage'))
-const AdminGenericCrudPage = lazy(() => import('../../pages/AdminDashboardPage/AdminGenericCrudPage'))
 const NotFoundPage = lazy(() => import('../../pages/NotFoundPage/NotFoundPage'))
 
 function AppRouter() {
@@ -103,17 +102,10 @@ function AppRouter() {
           <Route path="customers" element={<AdminCustomersPage />} />
           <Route path="categories" element={<AdminCategoriesPage />} />
           <Route path="vouchers" element={<AdminVouchersPage />} />
-          <Route path="posts" element={<AdminPostsPage />} />
           <Route path="comments" element={<AdminCommentsPage />} />
+          <Route path="sentiment" element={<AdminSentimentPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
-          
-          {/* Generic routes for all other tabs */}
-          <Route path="revenue" element={<AdminGenericCrudPage />} />
-          <Route path="pages" element={<AdminGenericCrudPage />} />
-          <Route path="post-categories" element={<AdminGenericCrudPage />} />
-          <Route path="roles" element={<AdminGenericCrudPage />} />
-          <Route path="activity" element={<AdminGenericCrudPage />} />
         </Route>
       </Routes>
     </Suspense>

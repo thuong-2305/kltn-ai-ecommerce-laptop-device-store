@@ -26,6 +26,70 @@ def create_shipping(sender, instance, created, **kwargs):
     if created:
         ShippingAddress.objects.create(user=instance)
 
+class Voucher(models.Model):
+    DISCOUNT_TYPE_CHOICES = [
+        ('percentage', 'Phần trăm (%)'),
+        ('fixed', 'Số tiền cố định (VND)'),
+    ]
+
+    code = models.CharField(max_length=50, unique=True, db_index=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    discount_type = models.CharField(max_length=20, choices=DISCOUNT_TYPE_CHOICES, default='percentage')
+    discount_value = models.DecimalField(max_digits=20, decimal_places=0) # Ví dụ: 10 (%) hoặc 50000 (VND)
+    
+    max_discount_amount = models.DecimalField(max_digits=20, decimal_places=0, null=True, blank=True) # Giới hạn mức giảm tối đa cho %
+    min_order_value = models.DecimalField(max_digits=20, decimal_places=0, default=0) # Giá trị đơn hàng tối thiểu
+    
+    usage_limit = models.PositiveIntegerField(null=True, blank=True) # Tổng lượt sử dụng tối đa
+    used_count = models.PositiveIntegerField(default=0) # Đã sử dụng bao nhiêu lần
+    
+    limit_per_user = models.PositiveIntegerField(default=1) # Lượt sử dụng tối đa trên mỗi user
+    
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    def is_valid_for_checkout(self, user, order_subtotal):
+        from django.utils import timezone
+        current_time = timezone.now()
+        if not self.is_active:
+            return False, "Mã giảm giá đã bị vô hiệu hóa."
+        if current_time < self.start_date:
+            return False, "Mã giảm giá chưa bắt đầu có hiệu lực."
+        if current_time > self.end_date:
+            return False, "Mã giảm giá đã hết hạn."
+        if order_subtotal < self.min_order_value:
+            return False, f"Giá trị đơn hàng chưa đạt mức tối thiểu ({self.min_order_value}đ) để áp dụng mã."
+        if self.usage_limit is not None and self.used_count >= self.usage_limit:
+            return False, "Mã giảm giá đã hết lượt sử dụng."
+            
+        # Kiểm tra giới hạn sử dụng trên mỗi user
+        if user and user.is_authenticated:
+            user_used = Order.objects.filter(
+                user=user, 
+                voucher=self
+            ).exclude(status='cancelled').count()
+            if user_used >= self.limit_per_user:
+                return False, "Bạn đã sử dụng mã giảm giá này tối đa số lần cho phép."
+                
+        return True, ""
+
+    def calculate_discount(self, order_subtotal):
+        from decimal import Decimal
+        if self.discount_type == 'percentage':
+            discount = Decimal(order_subtotal) * (Decimal(self.discount_value) / Decimal(100))
+            if self.max_discount_amount:
+                discount = min(discount, Decimal(self.max_discount_amount))
+        else:
+            discount = Decimal(self.discount_value)
+            
+        return min(discount, Decimal(order_subtotal))
+
 # Order
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -42,6 +106,8 @@ class Order(models.Model):
     phone = models.CharField(max_length=255)
     shipping_address = models.TextField(max_length=1500)
     amount_paid = models.DecimalField(max_digits=20, decimal_places=0)
+    voucher = models.ForeignKey(Voucher, on_delete=models.SET_NULL, null=True, blank=True)
+    discount_amount = models.DecimalField(max_digits=20, decimal_places=0, default=0)
     date_ordered = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     shipping_tracking_code = models.CharField(max_length=100, null=True, blank=True, db_index=True)
@@ -86,6 +152,10 @@ def set_shipped_date_on_update(sender, instance, **kwargs):
             # 2. Manual shipped flag update
             if instance.shipped and not obj.shipped:
                 instance.date_shipped = timezone.now()  # Use timezone-aware datetime
+
+            # 3. Auto mark as paid when status is delivered
+            if instance.status == 'delivered':
+                instance.is_paid = True
         except sender.DoesNotExist:
             instance._old_is_paid = False
             instance._old_shipped = False
@@ -94,6 +164,8 @@ def set_shipped_date_on_update(sender, instance, **kwargs):
         instance._old_is_paid = False
         instance._old_shipped = False
         instance._old_status = 'pending'
+        if instance.status == 'delivered':
+            instance.is_paid = True
 
 
 @receiver(post_save, sender=Order)

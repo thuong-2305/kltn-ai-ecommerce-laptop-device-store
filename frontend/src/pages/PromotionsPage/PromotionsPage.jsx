@@ -6,8 +6,28 @@ import { ChevronRight, Copy, Check, Clock, Tag, Gift, Zap, Sparkles } from 'luci
 const promotions = [
   {
     id: 1,
+    type: 'voucher',
+    title: 'Mã Giảm Giá SAVE10 - Ưu Đãi 10%',
+    desc: 'Nhập mã SAVE10 để giảm ngay 10% tổng giá trị đơn hàng (mức giảm tối đa lên tới 1 triệu đồng).',
+    badge: 'Mã Giảm Giá',
+    date: 'Đến 31/12/2026',
+    image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=1000',
+    code: 'SAVE10'
+  },
+  {
+    id: 2,
+    type: 'voucher',
+    title: 'Voucher WELCOME50 - Quà Tặng Bạn Mới',
+    desc: 'Giảm ngay 50.000đ cho mọi đơn hàng có giá trị từ 200.000đ trở lên khi nhập mã tại bước thanh toán.',
+    badge: 'Mã Giảm Giá',
+    date: 'Đến 31/12/2026',
+    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1000',
+    code: 'WELCOME50'
+  },
+  {
+    id: 3,
     type: 'laptop',
-    title: 'Back To School - Sinh Viên Nhận Deal Khủng',
+    title: 'Back To School - Ưu Đãi Sinh Viên BTS2026',
     desc: 'Giảm thêm 5% cho Học sinh - Sinh viên khi mua Laptop. Tặng kèm Balo chống sốc.',
     badge: 'Hot Deal',
     date: 'Đến 30/09/2026',
@@ -15,38 +35,20 @@ const promotions = [
     code: 'BTS2026'
   },
   {
-    id: 2,
+    id: 4,
     type: 'voucher',
-    title: 'Voucher Giảm 500K - Khách Hàng Mới',
+    title: 'Voucher NEW500K - Trợ Giá Laptop Khủng',
     desc: 'Nhập mã để nhận ngay ưu đãi giảm trực tiếp 500.000đ cho đơn hàng từ 10 triệu.',
     badge: 'Mã Giảm Giá',
     date: 'Đến 31/12/2026',
-    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1000',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1000',
     code: 'NEW500K'
-  },
-  {
-    id: 3,
-    type: 'accessory',
-    title: 'Sale Phụ Kiện - Mua 1 Tặng 1',
-    desc: 'Áp dụng cho toàn bộ Chuột, Bàn phím cơ và Tai nghe. Mua 1 sản phẩm tặng 1 lót chuột.',
-    badge: 'Flash Sale',
-    date: 'Chỉ trong hôm nay',
-    image: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&q=80&w=1000',
-  },
-  {
-    id: 4,
-    type: 'laptop',
-    title: 'Tuần Lễ Laptop Gaming Asus ROG',
-    desc: 'Giảm tới 3.000.000đ cho dòng Asus ROG. Trả góp 0% qua thẻ tín dụng.',
-    badge: 'Thương Hiệu',
-    date: 'Đến 15/06/2026',
-    image: 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&q=80&w=1000',
   },
   {
     id: 5,
     type: 'voucher',
-    title: 'Freeship Toàn Quốc',
-    desc: 'Miễn phí vận chuyển cho mọi đơn hàng từ 1.000.000đ. Nhập mã tại bước thanh toán.',
+    title: 'Freeship Toàn Quốc FREESHIPXTRA',
+    desc: 'Giảm ngay 30.000đ phí vận chuyển cho mọi đơn hàng từ 1.000.000đ.',
     badge: 'Vận Chuyển',
     date: 'Không giới hạn',
     image: 'https://images.unsplash.com/photo-1580674285054-bed31e145f59?auto=format&fit=crop&q=80&w=1000',
@@ -55,11 +57,11 @@ const promotions = [
   {
     id: 6,
     type: 'accessory',
-    title: 'Nâng Cấp RAM / SSD Nửa Giá',
-    desc: 'Giảm 50% phí linh kiện nâng cấp khi mua kèm Laptop tại cửa hàng.',
-    badge: 'Dịch Vụ',
-    date: 'Đến 31/08/2026',
-    image: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&q=80&w=1000',
+    title: 'Sale Phụ Kiện - Mua 1 Tặng 1',
+    desc: 'Áp dụng cho toàn bộ Chuột, Bàn phím cơ và Tai nghe. Mua 1 sản phẩm tặng 1 lót chuột.',
+    badge: 'Flash Sale',
+    date: 'Chỉ trong hôm nay',
+    image: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&q=80&w=1000',
   }
 ]
 

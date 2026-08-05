@@ -87,6 +87,44 @@ function ProductListPage() {
     updateFilters(parsedFiltersFromUrl)
   }, [parsedFiltersFromUrl, updateFilters])
 
+  // Local state for sidebar filters to prevent instant API fetches
+  const [localFilters, setLocalFilters] = useState(filters)
+
+  // Keep localFilters in sync with filters hook when filters change from outside (URL sync)
+  useEffect(() => {
+    setLocalFilters(filters)
+  }, [filters])
+
+  const handleLocalFilterChange = useCallback((filterKey, value) => {
+    setLocalFilters((prev) => ({
+      ...prev,
+      [filterKey]: value,
+    }))
+  }, [])
+
+  const handleApplyFilters = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams)
+    
+    // Reset page back to 1 on filter edits
+    newParams.delete('page')
+
+    const filterKeys = ['category', 'brand', 'cpu', 'ram', 'storage', 'screen', 'os', 'minPrice', 'maxPrice']
+    filterKeys.forEach((key) => {
+      let urlKey = key
+      if (key === 'minPrice') urlKey = 'min_price'
+      if (key === 'maxPrice') urlKey = 'max_price'
+
+      const value = localFilters[key]
+      if (value !== null && value !== undefined && value !== '' && value !== 0 && value !== 100000000) {
+        newParams.set(urlKey, value)
+      } else {
+        newParams.delete(urlKey)
+      }
+    })
+
+    setSearchParams(newParams)
+  }, [localFilters, searchParams, setSearchParams])
+
   const activeCategoryName = useMemo(() => {
     if (!filters.category) return 'Tất cả sản phẩm'
     return categories.find(c => String(c.id) === String(filters.category))?.name || 'Sản phẩm'
@@ -275,8 +313,9 @@ function ProductListPage() {
             <FilterSidebar
               categories={categories}
               brands={brands}
-              filters={filters}
-              onFilterChange={handleFilterChange}
+              filters={localFilters}
+              onFilterChange={handleLocalFilterChange}
+              onApplyFilters={handleApplyFilters}
               onReset={handleReset}
             />
           </div>
@@ -318,15 +357,16 @@ function ProductListPage() {
         onClose={() => setFilterSidebarOpen(false)}
         categories={categories}
         brands={brands}
-        filters={filters}
-        onFilterChange={handleFilterChange}
+        filters={localFilters}
+        onFilterChange={handleLocalFilterChange}
+        onApplyFilters={handleApplyFilters}
         onReset={handleReset}
       />
     </div>
   )
 }
 
-function MobileFilterDrawer({ isOpen, onClose, categories, brands, filters, onFilterChange, onReset }) {
+function MobileFilterDrawer({ isOpen, onClose, categories, brands, filters, onFilterChange, onReset, onApplyFilters }) {
   return (
     <>
       {isOpen && (
@@ -347,6 +387,7 @@ function MobileFilterDrawer({ isOpen, onClose, categories, brands, filters, onFi
           filters={filters}
           onFilterChange={onFilterChange}
           onReset={onReset}
+          onApplyFilters={onApplyFilters}
           isOpen={isOpen}
           onClose={onClose}
         />

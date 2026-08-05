@@ -4,12 +4,13 @@ import { buildHomeViewModel } from '../../features/home/utils/homeViewModel'
 import HomeLoadingState from '../../features/home/components/HomeLoadingState'
 import HomeErrorState from '../../features/home/components/HomeErrorState'
 import HomeHeroSection from '../../features/home/components/HomeHeroSection'
-import HomePromoGrid from '../../features/home/components/HomePromoGrid'
 import HomeFlashSaleSection from '../../features/home/components/HomeFlashSaleSection'
 import HomeFeaturedProducts from '../../features/home/components/HomeFeaturedProducts'
 import HomeSupportBanners from '../../features/home/components/HomeSupportBanners'
 import HomeBrandStrip from '../../features/home/components/HomeBrandStrip'
 import HomeNewsSection from '../../features/home/components/HomeNewsSection'
+import HomeInfoBar from '../../features/home/components/HomeInfoBar'
+import HomeTopProducts from '../../features/home/components/HomeTopProducts'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 
 function HomePage() {
@@ -34,11 +35,11 @@ function HomePage() {
   const currentHero = viewModel.heroSlides[activeHeroIndex] ?? viewModel.heroSlides[0]
 
   const selectedProducts = useMemo(() => {
-    if (activeTabId === 'all') {
-      return viewModel.featuredProducts
-    }
-
-    return viewModel.featuredProducts.filter((product) => String(product.category?.id) === activeTabId)
+    const list = activeTabId === 'all'
+      ? viewModel.featuredProducts
+      : viewModel.featuredProducts.filter((product) => String(product.category?.id) === activeTabId)
+    
+    return [...list].sort((a, b) => Number(b.id) - Number(a.id))
   }, [activeTabId, viewModel.featuredProducts])
 
   const featuredOverview = selectedProducts.slice(0, 8)
@@ -82,8 +83,9 @@ function HomePage() {
         onSelectSlide={setActiveHeroIndex}
         featuredProductCount={viewModel.stats.featured_product_count}
       />
-      <HomePromoGrid categories={viewModel.categories} />
+      <HomeInfoBar />
       <HomeFlashSaleSection products={viewModel.featuredProducts} />
+      <HomeTopProducts products={viewModel.topProducts} />
       <HomeFeaturedProducts
         tabs={viewModel.productTabs}
         activeTabId={activeTabId}

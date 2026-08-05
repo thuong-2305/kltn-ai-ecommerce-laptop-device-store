@@ -36,6 +36,17 @@ class Cart():
         quantity = int(quantity)
         variant_id = variant.id if variant else None
         
+        # Check stock validation
+        check_variant = variant
+        if not check_variant:
+            check_variant = product.variants.first()
+            
+        if check_variant:
+            if check_variant.stock <= 0:
+                raise ValueError("Sản phẩm hiện đang tạm hết hàng!")
+            if check_variant.stock < quantity:
+                raise ValueError(f"Không đủ số lượng trong kho (chỉ còn {check_variant.stock} sản phẩm)!")
+        
         if self.request.user.is_authenticated:
             # Check if item exists in DB cart
             exists = CartItem.objects.filter(
@@ -67,43 +78,53 @@ class Cart():
 
 
 
+
     def __len__(self):
         if self.request.user.is_authenticated:
             return self.db_cart.items.count()
         return len(self.cart)
 
     def total(self):
+        from store.views import _get_active_sales
+        _, active_sales_by_category = _get_active_sales()
+
         total = 0
         if self.request.user.is_authenticated:
             items = self.db_cart.items.select_related('product', 'variant')
             for item in items:
-                price = item.variant.price if item.variant else (item.product.sale_price if item.product.is_sale and item.product.sale_price else item.product.price)
+                product = item.product
+                sale = active_sales_by_category.get(product.category_id)
+                base_price = float(product.price or 0)
+                if sale is not None:
+                    discount_percentage = float(sale.discount_percentage)
+                    price = round(base_price * (1 - discount_percentage / 100), 2)
+                elif product.is_sale and product.sale_price:
+                    price = float(product.sale_price)
+                else:
+                    price = base_price
                 total += price * item.quantity
         else:
-            # Batch fetch to avoid N+1 queries
             all_pids = set()
-            all_vids = set()
             for key in self.cart.keys():
-                pid, vid = parse_session_key(key)
+                pid, _ = parse_session_key(key)
                 all_pids.add(pid)
-                if vid:
-                    all_vids.add(vid)
             
             products_map = {p.id: p for p in Product.objects.filter(id__in=all_pids)}
-            variants_map = {v.id: v for v in ProductVariant.objects.filter(id__in=all_vids)} if all_vids else {}
 
             for key, qty in self.cart.items():
-                pid, vid = parse_session_key(key)
+                pid, _ = parse_session_key(key)
                 product = products_map.get(pid)
                 if not product:
                     continue
-                if vid:
-                    variant = variants_map.get(vid)
-                    if not variant:
-                        continue
-                    price = variant.price
+                sale = active_sales_by_category.get(product.category_id)
+                base_price = float(product.price or 0)
+                if sale is not None:
+                    discount_percentage = float(sale.discount_percentage)
+                    price = round(base_price * (1 - discount_percentage / 100), 2)
+                elif product.is_sale and product.sale_price:
+                    price = float(product.sale_price)
                 else:
-                    price = product.sale_price if product.is_sale and product.sale_price else product.price
+                    price = base_price
                 total += price * qty
         return total
 
@@ -138,6 +159,23 @@ class Cart():
         product_id = product.id if isinstance(product, Product) else int(product)
         quantity = int(quantity)
 
+        # Validate stock limits
+        if variant_id:
+            try:
+                variant = ProductVariant.objects.get(id=variant_id)
+                if variant.stock < quantity:
+                    quantity = max(0, variant.stock)
+            except ProductVariant.DoesNotExist:
+                pass
+        else:
+            try:
+                product_obj = Product.objects.get(id=product_id)
+                variant = product_obj.variants.first()
+                if variant and variant.stock < quantity:
+                    quantity = max(0, variant.stock)
+            except Product.DoesNotExist:
+                pass
+
         if self.request.user.is_authenticated:
             CartItem.objects.filter(
                 cart=self.db_cart,
@@ -151,6 +189,7 @@ class Cart():
             key = make_session_key(product_id, variant_id)
             self.cart[key] = quantity
             self.session.modified = True
+
 
         return self.cart
 

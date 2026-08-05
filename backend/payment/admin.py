@@ -77,12 +77,18 @@ class OrderItemInline(admin.TabularInline):
 
 class OrderAdmin(admin.ModelAdmin):
     list_select_related = ('user',)
-    list_display = ('order_code', 'user', 'amount_paid', 'status', 'shipping_tracking_code', 'shipped', 'date_ordered')
+    list_display = ('order_code', 'user', 'amount_paid', 'status', 'shipping_tracking_code', 'shipped', 'display_date_ordered')
     list_filter = ('status', 'shipped', 'date_ordered')
     search_fields = ('order_code', 'user__username', 'full_name', 'shipping_tracking_code')
-    readonly_fields = ['date_ordered', 'order_code']
-    fields = ['order_code', 'user', 'full_name', 'phone', 'shipping_address', 'amount_paid', 'status', 'shipping_tracking_code', 'date_ordered', 'shipped', 'date_shipped']
+    readonly_fields = ['display_date_ordered', 'order_code']
+    fields = ['order_code', 'user', 'full_name', 'phone', 'shipping_address', 'amount_paid', 'status', 'shipping_tracking_code', 'display_date_ordered', 'shipped', 'date_shipped']
     inlines = [OrderItemInline]
+
+    @admin.display(description='Ngày đặt hàng', ordering='date_ordered')
+    def display_date_ordered(self, obj):
+        if not obj.date_ordered:
+            return '-'
+        return timezone.localtime(obj.date_ordered).strftime('%d/%m/%Y %H:%M:%S')
 
 # Register models to custom admin site
 custom_admin_site.register(ShippingAddress)
