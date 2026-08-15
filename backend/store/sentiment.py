@@ -4,28 +4,34 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+
 # Fallback sentiment analysis based on rating
 def _fallback_analyze(rating):
     if rating is not None:
         if rating >= 4:
-            return 'positive', 1.0
+            return "positive", 1.0
         elif rating <= 2:
-            return 'negative', 1.0
+            return "negative", 1.0
         else:
-            return 'neutral', 1.0
-    return 'neutral', 0.0
+            return "neutral", 1.0
+    return "neutral", 0.0
+
 
 try:
     import torch
     import torch.nn.functional as F
     from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
     HAS_ML_LIBS = True
 except ImportError as e:
-    logger.warning(f"ML libraries (torch/transformers) not available: {e}. Using fallback rating-based sentiment.")
+    logger.warning(
+        f"ML libraries (torch/transformers) not available: {e}. Using fallback rating-based sentiment."
+    )
     HAS_ML_LIBS = False
 
 # Path to the local pre-trained model directory
-MODEL_DIR = os.path.join(settings.BASE_DIR, 'distilphobert_best')
+MODEL_DIR = os.path.join(settings.BASE_DIR, "distilphobert_best")
+
 
 class SentimentAnalyzer:
     _tokenizer = None
@@ -42,11 +48,16 @@ class SentimentAnalyzer:
             return True
 
         if not os.path.exists(MODEL_DIR):
-            logger.warning(f"Model directory not found at {MODEL_DIR}. Using fallback rating-based sentiment.")
+            logger.warning(
+                f"Model directory not found at {MODEL_DIR}. Using fallback rating-based sentiment."
+            )
             return False
+        else:
+            logger.info(
+                f"Loading DistilPhoBERT tokenizer and model from {MODEL_DIR}..."
+            )
 
         try:
-            logger.info(f"Loading DistilPhoBERT tokenizer and model from {MODEL_DIR}...")
             cls._tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
             cls._model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
             cls._model.eval()
@@ -77,6 +88,7 @@ class SentimentAnalyzer:
             segmented_text = text
             try:
                 from pyvi import ViTokenizer
+
                 segmented_text = ViTokenizer.tokenize(text)
             except ImportError:
                 # pyvi not available, fall back to raw text (not ideal but safe)
@@ -84,10 +96,7 @@ class SentimentAnalyzer:
 
             # 3. Tokenize input
             inputs = cls._tokenizer(
-                segmented_text, 
-                return_tensors="pt", 
-                truncation=True, 
-                max_length=256
+                segmented_text, return_tensors="pt", truncation=True, max_length=256
             )
 
             # 4. Model inference
@@ -100,18 +109,19 @@ class SentimentAnalyzer:
             probs = probabilities[0].tolist()
             max_idx = probs.index(max(probs))
 
-            sentiment_map = {
-                0: 'negative',
-                1: 'neutral',
-                2: 'positive'
-            }
+            sentiment_map = {0: "negative", 1: "neutral", 2: "positive"}
 
-            sentiment_label = sentiment_map.get(max_idx, 'neutral')
+            sentiment_label = sentiment_map.get(max_idx, "neutral")
             confidence = probs[max_idx]
 
-            logger.info(f"Sentiment analysis: '{text[:30]}...' -> {sentiment_label} (score: {confidence:.4f})")
+            logger.info(
+                f"Sentiment analysis: '{text[:30]}...' -> {sentiment_label} (score: {confidence:.4f})"
+            )
             return sentiment_label, confidence
 
         except Exception as ex:
             logger.error(f"Error during sentiment inference: {ex}", exc_info=True)
             return _fallback_analyze(rating)
+
+
+sentiment_analyzer = SentimentAnalyzer
