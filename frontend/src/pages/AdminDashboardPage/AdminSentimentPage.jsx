@@ -96,8 +96,8 @@ export default function AdminSentimentPage() {
   const dataTrend = stats?.dataTrend || []
   
   // Calculate aggregate metrics
-  const positiveItem = dataPie.find(item => item.name === 'Tích cực')
-  const negativeItem = dataPie.find(item => item.name === 'Tiêu cực')
+  const positiveItem = dataPie.find(item => item.name === 'Hài lòng' || item.name === 'Tích cực')
+  const negativeItem = dataPie.find(item => item.name === 'Không hài lòng' || item.name === 'Tiêu cực')
   
   const overallPositivePercent = totalReviews > 0 && positiveItem 
     ? Math.round((positiveItem.value / totalReviews) * 100) 
@@ -253,9 +253,9 @@ export default function AdminSentimentPage() {
           </div>
 
           <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-100">
-            <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-green-500 rounded-full" /><span className="text-xs text-slate-650 font-medium">Tích cực</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-yellow-400 rounded-full" /><span className="text-xs text-slate-650 font-medium">Trung tính</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-red-500 rounded-full" /><span className="text-xs text-slate-650 font-medium">Tiêu cực</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-green-500 rounded-full" /><span className="text-xs text-slate-650 font-medium">Hài lòng</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-yellow-400 rounded-full" /><span className="text-xs text-slate-650 font-medium">Trung lập</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-red-500 rounded-full" /><span className="text-xs text-slate-650 font-medium">Không hài lòng</span></div>
           </div>
         </div>
       </div>
@@ -304,7 +304,7 @@ export default function AdminSentimentPage() {
                 <th className="py-4 px-6">Sản phẩm</th>
                 <th className="py-4 px-6 text-center">Tổng đánh giá</th>
                 <th className="py-4 px-6 text-center">Rating trung bình</th>
-                <th className="py-4 px-6">Tỉ lệ cảm xúc (% Tích cực / % Trung lập / % Tiêu cực)</th>
+                <th className="py-4 px-6">Tỉ lệ cảm xúc (% Hài lòng / % Trung lập / % Không hài lòng)</th>
                 <th className="py-4 px-6 text-right">Chi tiết</th>
               </tr>
             </thead>
@@ -352,7 +352,7 @@ export default function AdminSentimentPage() {
                             <div 
                               className="h-full bg-gradient-to-r from-emerald-500 to-green-500" 
                               style={{ width: `${prod.positive_percent}%` }}
-                              title={`Tích cực: ${prod.positive_percent}%`}
+                              title={`Hài lòng: ${prod.positive_percent}%`}
                             />
                           )}
                           {prod.neutral_percent > 0 && (
@@ -366,16 +366,16 @@ export default function AdminSentimentPage() {
                             <div 
                               className="h-full bg-red-500" 
                               style={{ width: `${prod.negative_percent}%` }}
-                              title={`Tiêu cực: ${prod.negative_percent}%`}
+                              title={`Không hài lòng: ${prod.negative_percent}%`}
                             />
                           )}
                         </div>
 
                         {/* Percent breakdown Labels */}
                         <div className="flex justify-between items-center text-[10px] font-bold">
-                          <span className="text-green-600 font-mono">{prod.positive_percent}% Tích cực</span>
+                          <span className="text-green-600 font-mono">{prod.positive_percent}% Hài lòng</span>
                           <span className="text-yellow-600 font-mono">{prod.neutral_percent}% Trung lập</span>
-                          <span className="text-red-500 font-mono">{prod.negative_percent}% Tiêu cực</span>
+                          <span className="text-red-500 font-mono">{prod.negative_percent}% Không hài lòng</span>
                         </div>
                       </div>
                     </td>

@@ -322,12 +322,12 @@ export function ReviewCard({ review }) {
               {review.sentiment === 'positive' ? (
                 <>
                   <Smile size={11} className="shrink-0" />
-                  <span>Tích cực</span>
+                  <span>Hài lòng</span>
                 </>
               ) : review.sentiment === 'negative' ? (
                 <>
                   <Frown size={11} className="shrink-0" />
-                  <span>Tiêu cực</span>
+                  <span>Không hài lòng</span>
                 </>
               ) : (
                 <>

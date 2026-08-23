@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from store.models import Product, Category, Brand, Review, ProductVariant, ProductThumbnail
+from store.text_utils import clean_config_string
 from payment.models import Order, OrderItem, Voucher
 from shared.utils import build_media_url
 
@@ -316,7 +317,7 @@ def admin_products(request):
         brand_id = data.get('brand_id')
         short_description = data.get('short_description', '')
         description = data.get('description', '')
-        config = data.get('config', '')
+        config = clean_config_string(data.get('config', ''))
         is_sale = str(data.get('is_sale', '')).lower() == 'true'
         sale_price = data.get('sale_price') or 0
         image = request.FILES.get('image')
@@ -407,7 +408,7 @@ def admin_product_detail(request, pk):
         brand_id = data.get('brand_id')
         short_description = data.get('short_description', '')
         description = data.get('description', '')
-        config = data.get('config', '')
+        config = clean_config_string(data.get('config', ''))
         is_sale = str(data.get('is_sale', '')).lower() == 'true'
         sale_price = data.get('sale_price') or 0
         image = request.FILES.get('image')

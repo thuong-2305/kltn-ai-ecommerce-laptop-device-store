@@ -6,7 +6,9 @@ import { formatPrice } from '../../../shared/utils/formatters'
 const parseConfig = (configStr) => {
   if (!configStr) return null
   const specs = {}
-  const segments = configStr.split('- ')
+  // Normalize Windows-style \r\n line endings to avoid \r artifacts in spec values
+  const normalized = configStr.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const segments = normalized.split('- ')
   segments.forEach((seg) => {
     const trimmed = seg.trim()
     if (!trimmed) return

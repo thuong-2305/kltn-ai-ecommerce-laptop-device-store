@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, ShoppingCart, Share2, GitCompare, ChevronLeft, ChevronRight, Star, CheckCircle, Truck, RotateCcw, Shield, Edit3, Smile, Frown, Meh, ChevronDown, ChevronUp, Check, Zap } from 'lucide-react'
+import { Heart, ShoppingCart, ChevronLeft, ChevronRight, CheckCircle, Truck, RotateCcw, Shield, Edit3, Smile, Frown, Meh, ChevronDown, ChevronUp, Check, Zap, Bot, ThumbsUp, ThumbsDown, AlertTriangle, TrendingUp, Filter, Loader2 } from 'lucide-react'
 import { formatPrice } from '../../../shared/utils/formatters'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useProductSentiment } from '../hooks/useProductSentiment'
+import { useProductReviews } from '../hooks/useProductReviews'
 
 /* ─────────────────────────────────────────────────────────────────
    IMAGE GALLERY
@@ -321,10 +323,21 @@ function renderBoldText(text) {
   )
 }
 
+// Strip stray CR/LF artifacts (real or literal-escaped) from a spec/config value.
+function cleanSpecText(text) {
+  if (!text) return text
+  return String(text)
+    .replace(/\\r\\n|\\r|\\n|\r\n|\r|\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 // Simple Markdown parser
 function parseDescription(text) {
   if (!text) return ''
-  return text.split('\n').map((line, idx) => {
+  // Normalize Windows-style \r\n line endings to avoid \r artifacts
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  return normalized.split('\n').map((line, idx) => {
     let cleanLine = line.trim()
 
     // Sub-header (### Header)
@@ -422,10 +435,10 @@ export function ProductSpecs({ config = [], specifications = [], description = '
                 {specifications.map((spec, idx) => (
                   <tr key={spec.id || idx} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
                     <td className="py-3 px-5 font-semibold text-slate-700 w-1/3 align-top bg-slate-50/30">
-                      {spec.key}
+                      {cleanSpecText(spec.key)}
                     </td>
                     <td className="py-3 px-5 text-slate-600 align-top">
-                      {spec.value}
+                      {cleanSpecText(spec.value)}
                     </td>
                   </tr>
                 ))}
@@ -447,17 +460,17 @@ export function ProductSpecs({ config = [], specifications = [], description = '
                     {/* Full-width Group Header Row */}
                     <tr className="bg-slate-50 border-b border-slate-200">
                       <td colSpan={2} className="py-2.5 px-5 font-black text-slate-800 uppercase tracking-tight text-xs bg-slate-100/60">
-                        {group.label}
+                        {cleanSpecText(group.label)}
                       </td>
                     </tr>
                     {/* Spec Items Rows under the header */}
                     {group.specs.map((spec, si) => (
                       <tr key={`${gi}-${si}`} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/30 transition-colors">
                         <td className="py-3 px-5 font-semibold text-slate-700 w-1/3 align-top">
-                          {spec.key}
+                          {cleanSpecText(spec.key)}
                         </td>
                         <td className="py-3 px-5 text-slate-600 align-top">
-                          {spec.value || '-'}
+                          {cleanSpecText(spec.value) || '-'}
                         </td>
                       </tr>
                     ))}
@@ -475,10 +488,14 @@ export function ProductSpecs({ config = [], specifications = [], description = '
 /* ─────────────────────────────────────────────────────────────────
    REVIEWS SECTION
 ───────────────────────────────────────────────────────────────── */
-function RatingBar({ label, count, total }) {
+function RatingBar({ label, count, total, isSelected, onClick }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0
   return (
-    <div className="flex items-center gap-3">
+    <div
+      onClick={onClick}
+      className={`flex items-center gap-3 cursor-pointer p-1 rounded-lg transition-colors ${isSelected ? 'bg-amber-50 ring-1 ring-amber-300' : 'hover:bg-slate-100/80'}`}
+      title={`Lọc đánh giá ${label} sao`}
+    >
       <span className="text-xs font-semibold text-slate-600 w-3">{label}</span>
       <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
         <path d="M12 17.27l-5.18 3.05 1.4-5.92L3 9.24l6.04-.52L12 3l2.96 5.72 6.04.52-5.22 5.16 1.4 5.92L12 17.27z" />
@@ -491,20 +508,204 @@ function RatingBar({ label, count, total }) {
   )
 }
 
-export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 0, ratingDistribution = {}, productId }) {
+/* ─────────────────────────────────────────────────────────────────
+   AI SENTIMENT WIDGET
+───────────────────────────────────────────────────────────────── */
+const OVERALL_CONFIG = {
+  very_positive: {
+    icon: <TrendingUp size={18} className="shrink-0" />,
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    text: 'text-emerald-700',
+    bar: 'bg-emerald-500',
+    badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  },
+  positive: {
+    icon: <Smile size={18} className="shrink-0" />,
+    bg: 'bg-green-50',
+    border: 'border-green-200',
+    text: 'text-green-700',
+    bar: 'bg-green-500',
+    badge: 'bg-green-100 text-green-800 border-green-300',
+  },
+  neutral: {
+    icon: <Meh size={18} className="shrink-0" />,
+    bg: 'bg-slate-50',
+    border: 'border-slate-200',
+    text: 'text-slate-600',
+    bar: 'bg-slate-400',
+    badge: 'bg-slate-100 text-slate-700 border-slate-300',
+  },
+  negative: {
+    icon: <Frown size={18} className="shrink-0" />,
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+    text: 'text-red-700',
+    bar: 'bg-red-500',
+    badge: 'bg-red-100 text-red-800 border-red-300',
+  },
+  very_negative: {
+    icon: <AlertTriangle size={18} className="shrink-0" />,
+    bg: 'bg-rose-50',
+    border: 'border-rose-200',
+    text: 'text-rose-700',
+    bar: 'bg-rose-600',
+    badge: 'bg-rose-100 text-rose-800 border-rose-300',
+  },
+}
+
+function SentimentBar({ label, icon, count, percent, barColor }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 w-32 shrink-0 whitespace-nowrap">
+        {icon}
+        {label}
+      </span>
+      <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${barColor} rounded-full transition-all duration-700`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <span className="text-xs font-bold text-slate-700 w-10 text-right shrink-0 font-mono">{percent}%</span>
+      <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">({count} lượt)</span>
+    </div>
+  )
+}
+
+function SentimentWidget({ productId }) {
+  const { sentiment, loading } = useProductSentiment(productId)
+
+  if (loading) {
+    return (
+      <div className="animate-pulse rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
+        <div className="h-4 bg-slate-200 rounded w-48" />
+        <div className="h-8 bg-slate-200 rounded w-36" />
+        <div className="space-y-2">
+          <div className="h-3 bg-slate-200 rounded" />
+          <div className="h-3 bg-slate-200 rounded w-5/6" />
+          <div className="h-3 bg-slate-200 rounded w-4/6" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!sentiment || !sentiment.has_data) return null
+
+  const { distribution, overall, keywords, total, avg_rating, ai_disclaimer } = sentiment
+  const cfg = OVERALL_CONFIG[overall?.label] ?? OVERALL_CONFIG.neutral
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+        <Bot size={16} className="text-blue-600" />
+        <span className="text-sm font-black text-slate-800 uppercase tracking-tight">Phân tích cảm xúc từ AI</span>
+      </div>
+
+      <div className="p-5 space-y-5">
+        {/* Overall label */}
+        <div className={`flex items-start gap-3 p-4 rounded-xl border ${cfg.bg} ${cfg.border}`}>
+          <span className={`mt-0.5 ${cfg.text}`}>{cfg.icon}</span>
+          <div>
+            <p className={`text-base font-black ${cfg.text} uppercase tracking-wide`}>{overall?.label_vn}</p>
+            <p className="text-sm text-slate-600 mt-0.5 leading-snug">{overall?.description}</p>
+          </div>
+        </div>
+
+        {/* Distribution bars */}
+        <div className="space-y-2.5">
+          <SentimentBar
+            label="Hài lòng"
+            icon={<Smile size={12} className="text-green-600" />}
+            count={distribution?.positive?.count ?? 0}
+            percent={distribution?.positive?.percent ?? 0}
+            barColor="bg-green-500"
+          />
+          <SentimentBar
+            label="Trung lập"
+            icon={<Meh size={12} className="text-slate-500" />}
+            count={distribution?.neutral?.count ?? 0}
+            percent={distribution?.neutral?.percent ?? 0}
+            barColor="bg-slate-400"
+          />
+          <SentimentBar
+            label="Không hài lòng"
+            icon={<Frown size={12} className="text-red-500" />}
+            count={distribution?.negative?.count ?? 0}
+            percent={distribution?.negative?.percent ?? 0}
+            barColor="bg-red-500"
+          />
+        </div>
+
+        <p className="text-xs text-slate-400 text-right">
+          Dựa trên {total} đánh giá · ⭐ {avg_rating}/5 sao trung bình
+        </p>
+
+        {/* Keywords */}
+        {(keywords?.positive?.length > 0 || keywords?.negative?.length > 0) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+            {keywords?.positive?.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <ThumbsUp size={13} className="text-green-600" />
+                  <span className="text-xs font-bold text-slate-700">Thường được khen:</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {keywords.positive.map(({ keyword }) => (
+                    <span key={keyword} className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700">
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {keywords?.negative?.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <ThumbsDown size={13} className="text-red-500" />
+                  <span className="text-xs font-bold text-slate-700">Thường bị chê:</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {keywords.negative.map(({ keyword }) => (
+                    <span key={keyword} className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-600">
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AI Disclaimer */}
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-blue-50 border border-blue-100">
+          <Bot size={13} className="text-blue-500 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-blue-600 leading-relaxed">{ai_disclaimer}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ProductReviews({ averageRating = 0, reviewCount = 0, ratingDistribution = {}, productId }) {
   const { user } = useAuth()
+  const [selectedStar, setSelectedStar] = useState('all')
+
+  const { reviews: filteredReviews, hasMore, loading, loadingMore, loadMore } = useProductReviews(productId, selectedStar)
+
   const SENTIMENT_COLORS = { positive: 'text-green-600 bg-green-50 border-green-200', negative: 'text-red-600 bg-red-50 border-red-200', neutral: 'text-slate-600 bg-slate-50 border-slate-200' }
   const SENTIMENT_LABEL = {
     positive: (
       <span className="flex items-center gap-1">
         <Smile size={11} className="shrink-0" />
-        <span>Tích cực</span>
+        <span>Hài lòng</span>
       </span>
     ),
     negative: (
       <span className="flex items-center gap-1">
         <Frown size={11} className="shrink-0" />
-        <span>Tiêu cực</span>
+        <span>Không hài lòng</span>
       </span>
     ),
     neutral: (
@@ -518,20 +719,27 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
   return (
     <div className="space-y-8">
       {/* Summary + Write review CTA */}
-      <div className="flex flex-col sm:flex-row gap-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
         <div className="flex flex-col items-center justify-center gap-2 min-w-[120px]">
           <span className="text-5xl font-black text-slate-900">{Number(averageRating).toFixed(1)}</span>
           <StarRating rating={averageRating} size={20} />
           <span className="text-sm text-slate-500">{reviewCount} đánh giá</span>
         </div>
-        <div className="flex-1 flex flex-col justify-center gap-2">
+        <div className="flex-1 w-full flex flex-col justify-center gap-2">
           {[5, 4, 3, 2, 1].map((star) => (
-            <RatingBar key={star} label={star} count={ratingDistribution[star] ?? 0} total={reviewCount} />
+            <RatingBar
+              key={star}
+              label={star}
+              count={ratingDistribution[star] ?? 0}
+              total={reviewCount}
+              isSelected={selectedStar === star}
+              onClick={() => setSelectedStar(selectedStar === star ? 'all' : star)}
+            />
           ))}
         </div>
-        {/* Write review button */}
+        {/* Write review button - vertically centered */}
         {productId && (
-          <div className="flex items-center sm:items-end shrink-0">
+          <div className="flex items-center justify-center shrink-0 self-center my-auto">
             <Link
               to={`/review/${productId}`}
               className="flex items-center gap-2 px-5 h-11 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-md hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
@@ -542,8 +750,47 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
         )}
       </div>
 
+      {/* AI Sentiment Widget */}
+      {productId && <SentimentWidget productId={productId} />}
+
+      {/* Star Filter Pills */}
+      {reviewCount > 0 && (
+        <div className="flex items-center gap-2 flex-wrap bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-bold text-slate-700 mr-2 flex items-center gap-1.5">
+            <Filter size={14} className="text-blue-600" />
+            Lọc theo số sao:
+          </span>
+          {['all', 5, 4, 3, 2, 1].map((star) => {
+            const isSelected = selectedStar === star
+            const count = star === 'all' ? reviewCount : (ratingDistribution[star] ?? 0)
+            return (
+              <button
+                key={star}
+                onClick={() => setSelectedStar(star)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ${
+                  isSelected
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-350 hover:bg-slate-100'
+                }`}
+              >
+                {star === 'all' ? (
+                  'Tất cả'
+                ) : (
+                  <span className="flex items-center gap-1">
+                    {star} <svg className={`w-3 h-3 ${isSelected ? 'text-amber-300 fill-amber-300' : 'text-amber-400 fill-amber-400'}`} viewBox="0 0 24 24"><path d="M12 17.27l-5.18 3.05 1.4-5.92L3 9.24l6.04-.52L12 3l2.96 5.72 6.04.52-5.22 5.16 1.4 5.92L12 17.27z" /></svg>
+                  </span>
+                )}
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'}`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Individual reviews */}
-      {reviews.length === 0 ? (
+      {reviewCount === 0 ? (
         <div className="text-center py-12 text-slate-500">
           <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -557,17 +804,34 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
             </Link>
           )}
         </div>
+      ) : loading ? (
+        <div className="flex items-center justify-center gap-2 py-12 text-slate-400">
+          <Loader2 size={18} className="animate-spin" />
+          <span className="text-sm font-semibold">Đang tải đánh giá...</span>
+        </div>
+      ) : filteredReviews.length === 0 ? (
+        <div className="text-center py-10 bg-white rounded-2xl border border-slate-200 p-6 text-slate-500">
+          <p className="font-bold text-slate-800">Không tìm thấy đánh giá {selectedStar} sao nào</p>
+          <button
+            onClick={() => setSelectedStar('all')}
+            className="mt-3 px-4 py-2 rounded-xl bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 transition-all"
+          >
+            Xem tất cả đánh giá ({reviewCount})
+          </button>
+        </div>
       ) : (
         <div className="space-y-5">
-          {reviews.map((review) => {
+          {filteredReviews.map((review) => {
             const commentStr = review.comment || ''
-            const hasNewline = commentStr.includes('\n')
+            // Normalize Windows-style \r\n line endings
+            const normalizedComment = commentStr.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+            const hasNewline = normalizedComment.includes('\n')
 
             let title = ''
-            let body = commentStr
+            let body = normalizedComment
 
             if (hasNewline) {
-              const parts = commentStr.split('\n')
+              const parts = normalizedComment.split('\n')
               title = parts[0]
               body = parts.slice(1).join('\n').trim()
             }
@@ -586,7 +850,7 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
                   </div>
                   <div className="flex items-center gap-2 flex-none">
                     <StarRating rating={review.rating} size={14} />
-                    {review.sentiment && (user?.is_staff || user?.is_superuser) && (
+                    {review.sentiment && (
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${SENTIMENT_COLORS[review.sentiment] ?? ''}`}>
                         {SENTIMENT_LABEL[review.sentiment] ?? review.sentiment}
                       </span>
@@ -598,6 +862,21 @@ export function ProductReviews({ reviews = [], averageRating = 0, reviewCount = 
               </div>
             )
           })}
+
+          {hasMore && (
+            <div className="text-center pt-2">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-1.5 px-5 h-10 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loadingMore
+                  ? <><Loader2 size={15} className="animate-spin" /> Đang tải...</>
+                  : <>Xem thêm đánh giá <ChevronDown size={15} /></>
+                }
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
