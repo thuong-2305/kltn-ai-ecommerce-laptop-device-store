@@ -87,7 +87,6 @@ export default function AiSentimentPage() {
   const currentReviews = stats?.reviews || []
   const total = stats?.total || 0
 
-  // Filter logic
   const filteredReviews = currentReviews.filter(r => {
     const rSentiment = r.sentiment || 'neutral'
     const matchesSentiment = sentimentFilter === 'Tất cả cảm xúc' ||

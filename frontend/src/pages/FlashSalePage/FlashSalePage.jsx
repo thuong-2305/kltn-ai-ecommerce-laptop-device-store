@@ -10,7 +10,6 @@ function useCountdown() {
   const [timeLeft, setTimeLeft] = useState({ hours: '00', minutes: '00', seconds: '00' })
 
   useEffect(() => {
-    // Đặt mục tiêu là 23:59:59 ngày hôm nay
     const target = new Date()
     target.setHours(23, 59, 59, 999)
 

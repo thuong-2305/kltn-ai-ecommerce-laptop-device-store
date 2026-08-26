@@ -51,7 +51,6 @@ function FilterSidebar({
     onFilterChange('maxPrice', parseInt(e.target.value) || 100000000)
   }
 
-  // Quick Price Ranges
   const quickPrices = [
     { label: 'Dưới 15 triệu', min: 0, max: 15000000 },
     { label: '15 - 25 triệu', min: 15000000, max: 25000000 },
@@ -62,7 +61,6 @@ function FilterSidebar({
     return filters.minPrice === item.min && filters.maxPrice === item.max
   }
 
-  // Filter & Sort Brands
   const sortedBrands = [...brands].sort((a, b) => a.name.localeCompare(b.name))
   const filteredBrands = sortedBrands.filter((b) => 
     b.name.toLowerCase().includes(brandSearch.toLowerCase())
@@ -479,9 +477,6 @@ function FilterSidebar({
   )
 }
 
-/**
- * FilterSection - Modern collapsible section component
- */
 function FilterSection({ title, expanded, onToggle, children }) {
   return (
     <div className="py-3 border-b border-slate-50 last:border-b-0">

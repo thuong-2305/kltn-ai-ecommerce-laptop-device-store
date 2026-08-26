@@ -58,17 +58,14 @@ custom_admin_site.register(ProductImageFeature)
 custom_admin_site.register(ProductSpecificationKey)
 
 
-# Mix profile info and user info
 class ProfileInline(admin.StackedInline):
     model = Profile
 
 
-# Extend User model
 class UserAdmin(admin.ModelAdmin):
     model = User
     fields = ['username', 'first_name', 'last_name', 'email']
     inlines = [ProfileInline]
 
 
-# Register the custom UserAdmin to custom admin site
 custom_admin_site.register(User, UserAdmin)

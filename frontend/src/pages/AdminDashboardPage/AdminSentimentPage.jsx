@@ -17,7 +17,6 @@ export default function AdminSentimentPage() {
   const [error, setError] = useState('')
   const [stats, setStats] = useState(null)
   
-  // Search and sorting
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('most_reviews') // most_reviews, highest_positive, highest_negative, highest_rating
 
@@ -38,19 +37,16 @@ export default function AdminSentimentPage() {
     fetchStats()
   }, [])
 
-  // Filter & Sort products
   const processedProducts = useMemo(() => {
     if (!stats?.products) return []
-    
+
     let list = [...stats.products]
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       list = list.filter(p => p.name.toLowerCase().includes(query))
     }
 
-    // Sorting
     list.sort((a, b) => {
       if (sortBy === 'most_reviews') {
         return b.total_reviews - a.total_reviews
@@ -95,7 +91,6 @@ export default function AdminSentimentPage() {
   const dataPie = stats?.dataPie || []
   const dataTrend = stats?.dataTrend || []
   
-  // Calculate aggregate metrics
   const positiveItem = dataPie.find(item => item.name === 'Hài lòng' || item.name === 'Tích cực')
   const negativeItem = dataPie.find(item => item.name === 'Không hài lòng' || item.name === 'Tiêu cực')
   

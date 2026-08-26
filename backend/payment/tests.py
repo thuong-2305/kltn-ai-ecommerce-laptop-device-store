@@ -10,22 +10,19 @@ User = get_user_model()
 
 class OrderAPITests(APITestCase):
     def setUp(self):
-        # Create user
         self.user = User.objects.create_user(
             username='orderuser',
             email='orderuser@example.com',
             password='testpassword'
         )
-        
-        # Create category & product
+
         self.category = Category.objects.create(name='Computers')
         self.product = Product.objects.create(
             name='MacBook Pro 14',
             price=30000000,
             category=self.category
         )
-        
-        # Create variant with stock
+
         self.variant = ProductVariant.objects.create(
             product=self.product,
             sku='MBP-14-16GB',
@@ -34,7 +31,6 @@ class OrderAPITests(APITestCase):
             stock=5
         )
 
-        # URL paths
         self.cart_add_url = reverse('cart_add_api')
         self.order_create_url = reverse('api_order_create')
         self.order_history_url = reverse('api_order_history')
@@ -110,7 +106,6 @@ class OrderAPITests(APITestCase):
     def test_order_history(self):
         self.client.force_authenticate(user=self.user)
 
-        # Create sample order
         order = Order.objects.create(
             user=self.user,
             full_name='Nguyen Van A',
@@ -179,14 +174,12 @@ from django.conf import settings
 
 class VNPAYAPITests(APITestCase):
     def setUp(self):
-        # Create user
         self.user = User.objects.create_user(
             username='payuser',
             email='payuser@example.com',
             password='testpassword'
         )
-        
-        # Create order
+
         self.order = Order.objects.create(
             user=self.user,
             full_name='Nguyen Van Pay',
@@ -194,8 +187,7 @@ class VNPAYAPITests(APITestCase):
             shipping_address='789 Dien Bien Phu',
             amount_paid=32000000
         )
-        
-        # URLs
+
         self.checkout_url = reverse('vnpay_checkout')
         self.return_url = reverse('vnpay_return')
         self.ipn_url = reverse('vnpay_ipn')
@@ -210,13 +202,11 @@ class VNPAYAPITests(APITestCase):
         self.assertIn('vnp_TxnRef=' + self.order.order_code, payment_url)
 
     def test_vnpay_return_success(self):
-        # Generate valid return signature params
         params = {
             'vnp_TxnRef': self.order.order_code,
             'vnp_ResponseCode': '00',
             'vnp_Amount': '3200000000', # 32000000 * 100
         }
-        # compute signature
         has_data = '&'.join([f"{k}={urllib.parse.quote_plus(v)}" for k, v in sorted(params.items())])
         secret_key = settings.VNPAY_HASH_SECRET_KEY
         signature = hmac.new(secret_key.encode('utf-8'), has_data.encode('utf-8'), hashlib.sha512).hexdigest()
@@ -307,7 +297,6 @@ class GHNIntegrationTests(APITestCase):
         self.order.status = 'confirmed'
         self.order.save()
 
-        # Refresh order from DB
         self.order.refresh_from_db()
 
         # Order should be automatically dispatched to GHN:
@@ -320,14 +309,12 @@ class GHNIntegrationTests(APITestCase):
         self.assertTrue(len(self.order.shipping_tracking_code) > 0)
 
     def test_ghn_webhook_updates_status_to_delivered(self):
-        # Setup tracking code
         tracking_code = 'GHN-TEST-123456'
         self.order.shipping_tracking_code = tracking_code
         self.order.status = 'shipping'
         self.order.shipped = True
         self.order.save()
 
-        # Send webhook from GHN
         webhook_payload = {
             'OrderCode': tracking_code,
             'Status': 'delivered'

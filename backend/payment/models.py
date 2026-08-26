@@ -90,7 +90,6 @@ class Voucher(models.Model):
             
         return min(discount, Decimal(order_subtotal))
 
-# Order
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Chờ xử lý'),
@@ -151,7 +150,7 @@ def set_shipped_date_on_update(sender, instance, **kwargs):
 
             # 2. Manual shipped flag update
             if instance.shipped and not obj.shipped:
-                instance.date_shipped = timezone.now()  # Use timezone-aware datetime
+                instance.date_shipped = timezone.now()
 
             # 3. Auto mark as paid when status is delivered
             if instance.status == 'delivered':
@@ -251,7 +250,6 @@ def send_order_notifications(sender, instance, created, **kwargs):
     except Exception as e:
         logger.error(f"Failed to send WebSocket notification for order {instance.order_code}: {e}")
 
-# Order Item
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)

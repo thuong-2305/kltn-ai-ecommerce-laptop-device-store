@@ -46,7 +46,6 @@ export default function WebSocketNotification() {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
 
-        // Add to active notifications list
         setNotifications(prev => [newNotification, ...prev])
 
         // Auto remove after 8 seconds

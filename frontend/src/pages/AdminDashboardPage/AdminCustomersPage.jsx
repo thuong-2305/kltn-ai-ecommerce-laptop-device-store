@@ -121,11 +121,9 @@ export default function AdminCustomersPage() {
     }
   }
 
-  // Calculate items range displaying
   const startRange = totalCount > 0 ? (currentPage - 1) * limit + 1 : 0
   const endRange = Math.min(currentPage * limit, totalCount)
 
-  // Generate page numbers
   const pageNumbers = []
   for (let i = 1; i <= totalPages; i++) {
     pageNumbers.push(i)

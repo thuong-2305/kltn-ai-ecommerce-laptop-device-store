@@ -1,9 +1,6 @@
 import ProductCard from './ProductCard'
 
-/**
- * ProductGrid - Grid display of product cards
- */
-function ProductGrid({ 
+function ProductGrid({
   products, 
   loading, 
   onAddToCart, 
@@ -44,7 +41,6 @@ function ProductGrid({
   }
 
   if (!products || products.length === 0) {
-    // Empty state
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20 px-6 rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center">

@@ -106,7 +106,6 @@ def wishlist_to_cart_api(request):
     product = get_object_or_404(Product, id=product_id)
     user = _get_authenticated_user(request)
     
-    # Check if in wishlist
     in_wishlist = False
     if user and user.is_authenticated:
         _, db_wishlist = _get_wishlist_products(request, user)
@@ -128,7 +127,6 @@ def wishlist_to_cart_api(request):
     if not product_in_cart:
         cart.add(product=product, quantity=1)
         msg = "Thêm vào giỏ hàng thành công"
-        # Remove from wishlist
         if user and user.is_authenticated:
             _, db_wishlist = _get_wishlist_products(request, user)
             db_wishlist.products.remove(product)
@@ -138,7 +136,6 @@ def wishlist_to_cart_api(request):
     else:
         msg = "Sản phẩm đã có trong giỏ hàng"
 
-    # Get updated wishlist products
     products, _ = _get_wishlist_products(request, user)
 
     return JsonResponse({

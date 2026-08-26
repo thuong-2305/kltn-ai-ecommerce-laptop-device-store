@@ -154,18 +154,15 @@ from .models import Category, Brand, Product, ProductSpecificationKey, ProductSp
 
 class BrandAndCategoryIntegrationTests(TestCase):
     def setUp(self):
-        # Create test category and brand
         self.category = Category.objects.create(name="Laptop Laptops")
         self.brand = Brand.objects.create(name="Dell Tech")
-        
-        # Create dummy image for upload
+
         dummy_image = SimpleUploadedFile(
             name='test_image.png',
             content=b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82',
             content_type='image/png'
         )
-        
-        # Create product associated with category and brand
+
         self.product = Product.objects.create(
             name="Dell XPS 13",
             price=25000000,
@@ -208,11 +205,9 @@ class BrandAndCategoryIntegrationTests(TestCase):
         self.assertEqual(payload['count'], 0)
 
     def test_products_filter_by_advanced_specs(self):
-        # Update self.product with a config
         self.product.config = "- CPU + Intel Core i7 - RAM + 16GB - Storage + 512GB SSD - OS + Windows 11"
         self.product.save()
 
-        # Create another product with different config
         dummy_image_2 = SimpleUploadedFile(
             name='test_image_2.png',
             content=b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82',
@@ -255,17 +250,14 @@ class BrandAndCategoryIntegrationTests(TestCase):
         self.assertEqual(payload['results'][0]['name'], "MacBook Pro")
 
     def test_product_detail_api_with_variants_and_specifications(self):
-        # Create key
         spec_key = ProductSpecificationKey.objects.create(name="CPU")
-        
-        # Create specification
+
         ProductSpecification.objects.create(
             product=self.product,
             key=spec_key,
             value="Intel Core i7"
         )
 
-        # Create variant
         ProductVariant.objects.create(
             product=self.product,
             sku="DELL-XPS13-I7-16-512",
@@ -274,7 +266,6 @@ class BrandAndCategoryIntegrationTests(TestCase):
             stock=10
         )
 
-        # Call product detail API
         response = self.client.get(reverse('product_detail_api', kwargs={'pk': self.product.id}))
         self.assertEqual(response.status_code, 200)
         payload = json.loads(response.content.decode('utf-8'))
@@ -320,7 +311,6 @@ class ReviewImageTests(APITestCase):
         self.submit_review_url = reverse('submit_review_api')
 
     def test_submit_review_with_images(self):
-        # Create dummy image files to upload
         image_1 = SimpleUploadedFile(
             name='review_pic_1.png',
             content=b'dummycontent1',
@@ -340,7 +330,6 @@ class ReviewImageTests(APITestCase):
             'images': [image_1, image_2]
         }
         
-        # Send multipart post request
         response = self.client.post(self.submit_review_url, post_data, format='multipart')
         self.assertEqual(response.status_code, 201)
         
@@ -392,7 +381,6 @@ class ImageSearchAPITests(APITestCase):
         )
 
     def test_products_api_with_ids_parameter(self):
-        # Call products_api with ids in query params
         ids_str = f"{self.product2.id},{self.product1.id}"
         url = f"{reverse('products_api')}?ids={ids_str}"
         response = self.client.get(url)
@@ -432,13 +420,11 @@ class ImageSearchAPITests(APITestCase):
 class SentimentAnalyzerTests(TestCase):
     def test_sentiment_analyzer_prediction(self):
         from store.sentiment import SentimentAnalyzer
-        
-        # Test positive review comment
+
         sentiment, score = SentimentAnalyzer.analyze("Sản phẩm dùng rất tốt, tôi vô cùng hài lòng", rating=5)
         self.assertEqual(sentiment, "positive")
         self.assertGreater(score, 0.5)
 
-        # Test negative review comment
         sentiment, score = SentimentAnalyzer.analyze("Sản phẩm tệ quá, dùng bị lag và nóng máy", rating=1)
         self.assertEqual(sentiment, "negative")
         self.assertGreater(score, 0.5)

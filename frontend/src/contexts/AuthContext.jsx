@@ -15,7 +15,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true) // true while restoring session
 
-  // ── Restore session on mount ──────────────────────────────────
   useEffect(() => {
     const access = localStorage.getItem(TOKEN_KEY)
     const refresh = localStorage.getItem(REFRESH_KEY)
@@ -24,7 +23,6 @@ export function AuthProvider({ children }) {
     authApi.me(access)
       .then(({ user }) => setUser(user))
       .catch(async () => {
-        // Try to refresh
         if (refresh) {
           try {
             const { access: newAccess } = await authApi.refreshToken(refresh)
@@ -40,7 +38,6 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
-  // ── Handle Session Expiration ────────────────────────────────
   useEffect(() => {
     const handleExpired = () => {
       setUser(null)
@@ -49,7 +46,6 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth_session_expired', handleExpired)
   }, [])
 
-  // ── Register ──────────────────────────────────────────────────
   const register = useCallback(async (formData) => {
     const data = await authApi.register(formData)
     localStorage.setItem(TOKEN_KEY, data.access)
@@ -63,7 +59,6 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  // ── Login ─────────────────────────────────────────────────────
   const login = useCallback(async (credentials) => {
     const data = await authApi.login(credentials)
     localStorage.setItem(TOKEN_KEY, data.access)
@@ -77,7 +72,6 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  // ── Google OAuth ──────────────────────────────────────────────
   const loginWithGoogle = useCallback(async (idToken) => {
     const data = await authApi.googleOAuth(idToken)
     localStorage.setItem(TOKEN_KEY, data.access)
@@ -91,12 +85,10 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  // ── Send OTP ──────────────────────────────────────────────────
   const sendOTP = useCallback(async (email) => {
     return await authApi.sendOTP(email)
   }, [])
 
-  // ── Logout ────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     const refresh = localStorage.getItem(REFRESH_KEY)
     try { if (refresh) await authApi.logout(refresh) } catch { /* ignore */ }
@@ -105,7 +97,6 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  // ── Helpers ───────────────────────────────────────────────────
   const getAccessToken = useCallback(() => localStorage.getItem(TOKEN_KEY), [])
 
   const contextValue = useMemo(() => ({

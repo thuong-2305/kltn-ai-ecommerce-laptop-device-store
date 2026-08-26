@@ -10,17 +10,14 @@ User = get_user_model()
 
 class WishlistAPITests(APITestCase):
     def setUp(self):
-        # Create user
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
             password='testpassword'
         )
-        
-        # Create category
+
         self.category = Category.objects.create(name='Test Category')
-        
-        # Create products
+
         self.product1 = Product.objects.create(
             name='Test Laptop 1',
             price=15000000,
@@ -32,7 +29,6 @@ class WishlistAPITests(APITestCase):
             category=self.category
         )
 
-        # Generate JWT token
         refresh = RefreshToken.for_user(self.user)
         self.access_token = str(refresh.access_token)
 
@@ -73,9 +69,8 @@ class WishlistAPITests(APITestCase):
         self.assertEqual(len(data['results']), 0)
 
     def test_authenticated_db_wishlist(self):
-        # Set authorization header for JWT authentication
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access_token}')
-        
+
         # 1. Add product1 to DB wishlist
         response = self.client.post(
             reverse('wishlist_add_api'),

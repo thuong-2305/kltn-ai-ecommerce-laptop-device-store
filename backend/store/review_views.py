@@ -27,7 +27,6 @@ def _get_user(request):
 def _serialize_review(review, request=None):
     from store.views import _build_media_url
     images = []
-    # Fetch related images from review.images relation
     for img in review.images.all():
         url = _build_media_url(request, img.image)
         if url:
@@ -173,7 +172,6 @@ def submit_review_api(request):
         comment = request.POST.get('comment', '').strip()
         title = request.POST.get('title', '').strip()
 
-    # Convert types
     try:
         if product_id is not None:
             product_id = int(product_id)
@@ -182,7 +180,6 @@ def submit_review_api(request):
     except (ValueError, TypeError):
         return JsonResponse({'error': 'Dữ liệu product_id hoặc rating không hợp lệ'}, status=400)
 
-    # Validation
     if not product_id:
         return JsonResponse({'error': 'Thiếu product_id'}, status=400)
     if not rating or rating not in range(1, 6):
@@ -195,22 +192,18 @@ def submit_review_api(request):
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Sản phẩm không tồn tại'}, status=404)
 
-    # Check if a review already exists for this user and product
     if Review.objects.filter(user=user, product=product).exists():
         return JsonResponse({'error': 'Bạn đã đánh giá sản phẩm này rồi và không thể chỉnh sửa.'}, status=400)
 
-    # Combine title + comment
     full_comment = f"{title}\n{comment}".strip() if title else comment
 
-    # Run sentiment analysis using our model
     from store.sentiment import SentimentAnalyzer
     sentiment_label, confidence = SentimentAnalyzer.analyze(full_comment, rating=rating)
 
-    # Run spam detection using our model from Hugging Face Hub
     from store.spam_detective import isSpam
     is_spam_detected = isSpam(full_comment)
 
-    # Upsert — one review per user per product
+    # One review per user per product
     review, created = Review.objects.update_or_create(
         user=user,
         product=product,
@@ -224,15 +217,12 @@ def submit_review_api(request):
         }
     )
 
-    # Handle image uploads
     uploaded_files = request.FILES.getlist('images') or request.FILES.getlist('image')
     if uploaded_files:
-        # Validate image sizes
         for file in uploaded_files[:5]:
             if file.size > MAX_REVIEW_IMAGE_SIZE:
                 return JsonResponse({'error': f'Kích thước ảnh "{file.name}" vượt quá 5MB'}, status=400)
         if not created:
-            # Remove existing review images if updating review
             review.images.all().delete()
         for file in uploaded_files[:5]:
             from .models import ReviewImage
@@ -276,7 +266,6 @@ def admin_reviews_api(request):
 
     from django.db.models import Q
     from django.core.paginator import Paginator
-
     search = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', 'all').strip()
 
@@ -298,7 +287,6 @@ def admin_reviews_api(request):
 
     reviews = reviews.order_by('-review_date', '-id')
 
-    # Pagination
     try:
         page = int(request.GET.get('page', 1))
         limit = int(request.GET.get('limit', 10))

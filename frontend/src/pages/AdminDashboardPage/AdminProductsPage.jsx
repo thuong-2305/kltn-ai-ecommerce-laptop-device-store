@@ -144,7 +144,6 @@ export default function AdminProductsPage() {
     }
   }
 
-  // Multi thumbnails upload handler
   const handleThumbnailsChange = (e) => {
     const files = Array.from(e.target.files)
     if (files.length > 0) {

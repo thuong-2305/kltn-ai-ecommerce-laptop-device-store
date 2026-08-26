@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 # ------------------------ Product -------------------------
-#Categories of products
 class Category(models.Model):
     name = models.CharField(max_length=50)
     image = models.ImageField(upload_to='uploads/category/', blank=True, null=True)
@@ -23,7 +22,6 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = 'categories'
 
-#Brands of products
 class Brand(models.Model):
     name = models.CharField(max_length=50, unique=True)
     image = models.ImageField(upload_to='uploads/brand/', blank=True, null=True)
@@ -34,7 +32,6 @@ class Brand(models.Model):
     class Meta:
         ordering = ['name']
 
-#All of our product
 class Product(models.Model):
     name = models.CharField(max_length=255)
     price = models.DecimalField(default=0, decimal_places=0, max_digits=20)
@@ -43,9 +40,7 @@ class Product(models.Model):
     short_description = models.TextField(default='', blank=True, null=True)
     description = models.TextField(default='', blank=True, null=True)
     image = models.ImageField(upload_to='uploads/product/')
-    #configure
     config = models.TextField(default='', blank=True, null=True)
-    #sale
     is_sale = models.BooleanField(default=False, db_index=True)
     sale_price = models.DecimalField(default=0, decimal_places=0, max_digits=20)
     def __str__(self):
@@ -70,7 +65,6 @@ class Product(models.Model):
 
 
 
-# Thumnails cho main Product
 class ProductThumbnail(models.Model):
     product = models.ForeignKey(Product, related_name='thumbnails', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='uploads/product/thumbnails/')
@@ -79,7 +73,6 @@ class ProductThumbnail(models.Model):
         return f"Thumbnail for {self.product.name}"
 
 
-# Product Feature
 class ProductImageFeature(models.Model):
     product = models.OneToOneField(Product, related_name='image_feature', on_delete=models.CASCADE)
     vector_json = models.TextField()
@@ -93,7 +86,6 @@ class ProductImageFeature(models.Model):
     def __str__(self):
         return f"Feature for {self.product.name}"
 
-#SaleEvent
 class SaleEvent(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)

@@ -31,14 +31,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Add installed
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'channels',
 
-    # Add app
     'store',
     'cart',
     'payment',
@@ -60,7 +58,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# CORS Configuration - Allow React dev server and production client to call API
+# CORS Configuration
 cors_origins = config('CORS_ALLOWED_ORIGINS', default='http://localhost:5173,http://127.0.0.1:5173')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
 CORS_ALLOW_CREDENTIALS = True
@@ -279,7 +277,7 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 
 
 
-# Use SQLite for running tests to avoid connecting to/altering remote MySQL DB
+# Use SQLite for running tests to avoid connecting to/altering the remote PostgreSQL DB
 import sys
 if 'test' in sys.argv:
     DATABASES = {

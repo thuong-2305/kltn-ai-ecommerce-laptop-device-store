@@ -5,8 +5,7 @@ import { useLocation } from 'react-router-dom'
 export default function AdminGenericCrudPage() {
   const location = useLocation()
   const path = location.pathname.split('/').pop()
-  
-  // Basic mapping to show a relevant title based on URL path
+
   const titles = {
     categories: 'Quản lý Danh mục',
     vouchers: 'Quản lý Voucher',

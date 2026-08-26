@@ -20,9 +20,6 @@ import { toast } from '../../shared/utils/toast'
 let cachedCategories = null
 let cachedBrands = null
 
-/**
- * ProductListPage - Optimized product listing page
- */
 function ProductListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [categories, setCategories] = useState(cachedCategories || [])
@@ -64,7 +61,6 @@ function ProductListPage() {
     refetch,
   } = useProductFilters()
 
-  // Parse URL search parameters into a memoized object
   const parsedFiltersFromUrl = useMemo(() => {
     return {
       search: searchParams.get('q') || '',
@@ -204,7 +200,6 @@ function ProductListPage() {
     // TODO: Implement compare functionality
   }, [])
 
-  // Memoize active filters list to prevent structural re-evaluation on renders
   const activeFiltersList = useMemo(() => {
     const list = []
     if (filters.category) {

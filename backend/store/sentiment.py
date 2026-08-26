@@ -24,7 +24,6 @@ except ImportError as e:
     logger.warning(f"ML libraries (torch/transformers) not available: {e}. Using fallback rating-based sentiment.")
     HAS_ML_LIBS = False
 
-# Path to the local pre-trained model directory
 MODEL_DIR = os.path.join(settings.BASE_DIR, 'distilphobert_best')
 
 class SentimentAnalyzer:

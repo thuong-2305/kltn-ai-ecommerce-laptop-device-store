@@ -28,7 +28,6 @@ def load_clip_model():
         from PIL import Image
         import faiss
         
-        # Load clip model
         model, preprocess = clip.load("ViT-B/32", device="cpu")
         _model = model
         _preprocess = preprocess
@@ -60,7 +59,6 @@ def get_or_extract_feature(product):
     except ProductImageFeature.DoesNotExist:
         if product.image and os.path.exists(product.image.path):
             try:
-                # Check if CLIP is available
                 model, _ = load_clip_model()
                 if not model:
                     return None

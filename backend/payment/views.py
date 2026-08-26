@@ -63,7 +63,6 @@ def api_calculate_shipping_fee(request):
     if not province or not ward:
         return Response({'error': 'Vui lòng chọn đầy đủ Tỉnh/Thành phố và Phường/Xã'}, status=400)
 
-    # 1. Resolve district_id and ward_code using mapping
     from payment.ghn import ghn_mapping, calculate_ghn_shipping_cost, get_ghn_location_ids
     mapping_key = f"{province}|{ward}"
     mapping_data = ghn_mapping.get(mapping_key)
@@ -74,11 +73,9 @@ def api_calculate_shipping_fee(request):
     else:
         # Fallback to name matching
         district_id, ward_code = get_ghn_location_ids(province, province, ward)
-        
-    # Service type mapping
-    service_type_id = 2 if shipping_method == 'normal' else 1 # GHN standard is 2, express is 1
 
-    # 2. Call GHN Fee API
+    service_type_id = 2 if shipping_method == 'normal' else 1  # GHN standard is 2, express is 1
+
     fee = calculate_ghn_shipping_cost(
         to_district_id=district_id,
         to_ward_code=ward_code,
@@ -313,7 +310,6 @@ def api_order_create(request):
                             f"Sản phẩm {product.name} ({variant.name}) không đủ tồn kho (chỉ còn {variant.stock})."
                         )
                     
-                    # Deduct stock
                     variant.stock -= qty
                     variant.save()
 
@@ -520,7 +516,6 @@ def api_order_history(request):
         items_list = []
         for item in order.items.all():
             price = float(item.price)
-            # Build absolute product image URL if possible
             prod_image = None
             if item.product and item.product.image:
                 prod_image = _build_media_url(request, item.product.image)
@@ -820,16 +815,14 @@ def api_ghn_webhook(request):
         return Response({"error": "OrderCode is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        # Match order by GHN tracking code
         order = Order.objects.get(shipping_tracking_code=ghn_order_code)
-        
-        # Check if GHN status represents a successful delivery
+
+        # GHN statuses that count as a successful delivery
         if ghn_status in ['delivered', 'delivered_ok', 'done', 'shipping_ok']:
             order.status = 'delivered'
             order.save()
             logger.info(f"Order {order.order_code} successfully delivered via GHN.")
 
-            # Send real-time WebSocket notification to the user
             try:
                 from asgiref.sync import async_to_sync
                 from channels.layers import get_channel_layer

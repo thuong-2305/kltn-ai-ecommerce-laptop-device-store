@@ -1,6 +1,3 @@
-/**
- * ProductListErrorState - Error screen
- */
 function ProductListErrorState({ error, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-24 px-6 rounded-2xl border border-red-200 bg-red-50">

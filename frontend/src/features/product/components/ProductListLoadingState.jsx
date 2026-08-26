@@ -1,6 +1,3 @@
-/**
- * ProductListLoadingState - Loading skeleton screen
- */
 function ProductListLoadingState() {
   return (
     <div className="space-y-8">

@@ -6,11 +6,9 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 logger = logging.getLogger(__name__)
 
-# Cấu hình đường dẫn file Stopwords
 base_path = os.path.dirname(__file__)
 STOPWORDS_PATH = os.path.join(base_path, 'resources', 'vietnamese-stopwords-dash.txt')
 
-# Tải danh sách Stopwords
 stopwords = set()
 if os.path.exists(STOPWORDS_PATH):
     try:
@@ -21,7 +19,6 @@ if os.path.exists(STOPWORDS_PATH):
 else:
     logger.warning(f"Không tìm thấy file stopwords tại {STOPWORDS_PATH}")
 
-# Cấu hình Hugging Face Repository
 REPO_ID = "thuong2305/vietnamese-spam-detector"
 SUBFOLDER = "task_1"
 
@@ -35,7 +32,6 @@ def load_model():
         return True
         
     try:
-        # Đọc token Hugging Face từ biến môi trường
         from django.conf import settings
         hf_token = getattr(settings, 'HF_TOKEN', None) or os.getenv('HF_TOKEN')
         

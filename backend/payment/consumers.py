@@ -10,8 +10,7 @@ class OrderNotificationConsumer(AsyncWebsocketConsumer):
             return
 
         self.group_name = f"user_{self.user.id}"
-        
-        # Join group
+
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name
@@ -21,7 +20,6 @@ class OrderNotificationConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if hasattr(self, 'group_name'):
-            # Leave group
             await self.channel_layer.group_discard(
                 self.group_name,
                 self.channel_name
@@ -31,8 +29,7 @@ class OrderNotificationConsumer(AsyncWebsocketConsumer):
     async def send_notification(self, event):
         message = event.get('message')
         notification_type = event.get('notification_type', 'order_update')
-        
-        # Send message to WebSocket
+
         await self.send(text_data=json.dumps({
             'message': message,
             'notification_type': notification_type,

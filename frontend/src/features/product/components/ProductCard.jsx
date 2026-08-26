@@ -57,10 +57,6 @@ const parseConfig = (configStr) => {
 }
 
 
-/**
- * ProductCard - Modern redesigned product card component
- * Features: Badge, hover effects, rating, price, action buttons
- */
 function ProductCard({ product, onAddToCart, onAddToWishlist, onQuickView, onCompare }) {
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [isCompared, setIsCompared] = useState(false)
@@ -73,7 +69,6 @@ function ProductCard({ product, onAddToCart, onAddToWishlist, onQuickView, onCom
   const originalPrice = product.price
   const hasDiscount = discountPercentage > 0
 
-  // Rating display
   const renderStars = (rating) => {
     const filledStars = Math.round(rating || 0)
     return (
