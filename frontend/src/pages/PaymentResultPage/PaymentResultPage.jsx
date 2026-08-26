@@ -26,8 +26,7 @@ function PaymentResultPage() {
       try {
         const token = localStorage.getItem('ld_access')
         const headers = token ? { Authorization: `Bearer ${token}` } : {}
-        
-        // Fetch order details directly by order code
+
         const res = await axios.get(`http://localhost:8000/api/payment/orders/${orderCode}/detail/`, { headers })
         if (res.data) {
           setOrder(res.data)

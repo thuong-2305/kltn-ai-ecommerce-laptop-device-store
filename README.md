@@ -61,6 +61,7 @@ kltn-ai-ecommer/
 │   │   ├── services/           # API client (axios)
 │   │   ├── shared/             # Header, Footer, utils
 │   │   └── hooks/              # Custom React hooks
+│   ├── .env                    # ⚠️ Biến môi trường (KHÔNG có trên Git)
 │   ├── package.json
 │   └── vite.config.js
 │
@@ -152,11 +153,28 @@ python manage.py migrate
 
 ### 3. Cài đặt Frontend (React + Vite)
 
+#### 3.1 Cài đặt Dependencies
+
 ```bash
 cd frontend
 npm install
 ```
 
+#### 3.2 Tạo file `.env`
+
+Tạo file `frontend/.env` với nội dung sau:
+
+```env
+# ─── Backend API ───
+VITE_API_URL=http://localhost:8000
+
+# ─── Google OAuth (dùng chung Client ID với backend) ───
+VITE_GOOGLE_CLIENT_ID=<GOOGLE_CLIENT_ID>
+```
+
+> ℹ️ `VITE_GOOGLE_CLIENT_ID` phải trùng với `GOOGLE_CLIENT_ID` đã khai báo ở [backend/.env](#23-tạo-file-env).
+
+---
 
 ## ▶️ Chạy dự án
 

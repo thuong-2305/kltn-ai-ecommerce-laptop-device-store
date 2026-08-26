@@ -110,8 +110,7 @@ function FlashSaleCard({ product }) {
 
 export default function HomeFlashSaleSection({ products = [] }) {
   const { hours, minutes, seconds } = useFakeCountdown()
-  
-  // Lấy 4 sản phẩm đầu tiên
+
   const displayProducts = products.slice(0, 4)
 
   if (displayProducts.length === 0) return null

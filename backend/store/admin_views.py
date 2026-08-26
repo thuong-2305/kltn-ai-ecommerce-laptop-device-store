@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from store.models import Product, Category, Brand, Review, ProductVariant, ProductThumbnail
+from store.text_utils import clean_config_string
 from payment.models import Order, OrderItem, Voucher
 from shared.utils import build_media_url
 
@@ -270,7 +271,6 @@ def admin_products(request):
 
         products_qs = products_qs.order_by('-id')
 
-        # Pagination
         try:
             page = int(request.query_params.get('page', 1))
             limit = int(request.query_params.get('limit', 10))
@@ -316,7 +316,7 @@ def admin_products(request):
         brand_id = data.get('brand_id')
         short_description = data.get('short_description', '')
         description = data.get('description', '')
-        config = data.get('config', '')
+        config = clean_config_string(data.get('config', ''))
         is_sale = str(data.get('is_sale', '')).lower() == 'true'
         sale_price = data.get('sale_price') or 0
         image = request.FILES.get('image')
@@ -351,7 +351,6 @@ def admin_products(request):
             product.image = image
             product.save()
 
-        # Handle multiple ProductThumbnails
         thumbnails = request.FILES.getlist('thumbnails')
         for f in thumbnails:
             ProductThumbnail.objects.create(product=product, image=f)
@@ -407,7 +406,7 @@ def admin_product_detail(request, pk):
         brand_id = data.get('brand_id')
         short_description = data.get('short_description', '')
         description = data.get('description', '')
-        config = data.get('config', '')
+        config = clean_config_string(data.get('config', ''))
         is_sale = str(data.get('is_sale', '')).lower() == 'true'
         sale_price = data.get('sale_price') or 0
         image = request.FILES.get('image')
@@ -440,7 +439,6 @@ def admin_product_detail(request, pk):
             product.image = image
         product.save()
 
-        # Handle deleting selected thumbnails
         delete_thumbnail_ids = data.get('delete_thumbnail_ids')
         if delete_thumbnail_ids:
             try:
@@ -449,7 +447,6 @@ def admin_product_detail(request, pk):
             except ValueError:
                 pass
 
-        # Handle uploading new thumbnails
         new_thumbnails = request.FILES.getlist('new_thumbnails')
         for f in new_thumbnails:
             ProductThumbnail.objects.create(product=product, image=f)
@@ -551,7 +548,6 @@ def admin_orders(request):
 
     orders_qs = orders_qs.order_by('-date_ordered', '-id')
 
-    # Pagination
     try:
         page = int(request.query_params.get('page', 1))
         limit = int(request.query_params.get('limit', 10))
@@ -674,7 +670,6 @@ def admin_vouchers(request):
             vouchers = vouchers.filter(Q(code__icontains=search) | Q(name__icontains=search))
         vouchers = vouchers.order_by('-id')
 
-        # Pagination
         try:
             page = int(request.query_params.get('page', 1))
             limit = int(request.query_params.get('limit', 10))
@@ -729,7 +724,6 @@ def admin_vouchers(request):
         if not code or not name or not discount_value or not start_date or not end_date:
             return Response({'error': 'Vui lòng cung cấp đầy đủ thông tin voucher'}, status=400)
 
-        # Parse date strings
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M')
             end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M')
@@ -836,7 +830,6 @@ def admin_users(request):
 
     users_qs = users_qs.order_by('-id')
 
-    # Pagination
     try:
         page = int(request.query_params.get('page', 1))
         limit = int(request.query_params.get('limit', 10))

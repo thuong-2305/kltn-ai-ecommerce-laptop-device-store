@@ -48,7 +48,6 @@ class Cart():
                 raise ValueError(f"Không đủ số lượng trong kho (chỉ còn {check_variant.stock} sản phẩm)!")
         
         if self.request.user.is_authenticated:
-            # Check if item exists in DB cart
             exists = CartItem.objects.filter(
                 cart=self.db_cart,
                 product=product,

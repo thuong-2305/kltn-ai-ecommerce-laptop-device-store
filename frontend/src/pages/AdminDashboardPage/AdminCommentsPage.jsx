@@ -179,7 +179,7 @@ export default function AdminCommentsPage() {
                           cmt.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-700' :
                             'bg-slate-50 border-slate-200 text-slate-600'
                         }`}>
-                        {cmt.sentiment === 'positive' ? 'Tích cực' : cmt.sentiment === 'negative' ? 'Tiêu cực' : 'Trung lập'}
+                        {cmt.sentiment === 'positive' ? 'Hài lòng' : cmt.sentiment === 'negative' ? 'Không hài lòng' : 'Trung lập'}
                       </span>
                     </td>
                     <td className="py-3 px-6">

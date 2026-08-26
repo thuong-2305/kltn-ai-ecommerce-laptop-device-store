@@ -1,8 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-/**
- * Pagination - Modern pagination controls component
- */
 function Pagination({ current, total, onPageChange, isLoading }) {
   const pages = Array.from({ length: total }, (_, i) => i + 1)
 

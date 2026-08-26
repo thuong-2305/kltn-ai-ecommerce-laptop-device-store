@@ -64,7 +64,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', ''),
             phone=validated_data.get('phone', '')
         )
-        # Delete OTP record after successful registration
         from .models import OTPVerification
         OTPVerification.objects.filter(email=user.email).delete()
         return user
@@ -126,7 +125,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return email_clean
 
     def update(self, instance, validated_data):
-        # Update User fields
         instance.first_name = validated_data.get('first_name', instance.first_name).strip()
         instance.last_name = validated_data.get('last_name', instance.last_name).strip()
         if 'email' in validated_data:
@@ -135,7 +133,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             instance.phone = validated_data['phone'].strip()
         instance.save()
 
-        # Update Profile fields
         profile, _ = Profile.objects.get_or_create(user=instance)
         if 'address' in validated_data:
             profile.address = validated_data['address'].strip()

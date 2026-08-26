@@ -292,7 +292,6 @@ function CheckoutPage() {
         const token = localStorage.getItem('ld_access')
         if (token) {
           try {
-            // Tải danh sách địa chỉ trước
             const addrListRes = await axios.get('http://localhost:8000/api/payment/addresses/', {
               headers: { Authorization: `Bearer ${token}` }
             })
@@ -317,7 +316,6 @@ function CheckoutPage() {
             }
 
             if (addresses && addresses.length > 0) {
-              // Tìm địa chỉ mặc định hoặc phần tử đầu tiên
               const defaultAddr = addresses.find(a => a.isDefault) || addresses[0]
               setSelectedAddressId(defaultAddr.id)
 
@@ -334,7 +332,6 @@ function CheckoutPage() {
                 ward: savedWard
               }))
 
-              // Cập nhật danh sách phường tương ứng với tỉnh thành đã chọn
               if (savedProvince) {
                 const matchedWards = res.data[savedProvince] || []
                 setWardList(matchedWards)

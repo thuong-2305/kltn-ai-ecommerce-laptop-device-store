@@ -1,12 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import api from '../../../services/api'
 
-/**
- * useProductFilters - Custom hook untuk manage product filters dan pagination
- * States: filters, sorting, pagination, loading, error
- */
+/** Manages product filter/sort state, pagination, and the fetch that keeps them in sync. */
 export function useProductFilters() {
-  // Filter states
   const [filters, setFilters] = useState({
     category: null,
     brand: null,
@@ -23,7 +19,6 @@ export function useProductFilters() {
     sortBy: 'newest', // newest, price-asc, price-desc, rating, popular
   })
 
-  // Pagination states
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -31,14 +26,10 @@ export function useProductFilters() {
     totalPages: 0,
   })
 
-  // Data states
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  /**
-   * Fetch products dari API dengan filters & pagination
-   */
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
@@ -60,10 +51,9 @@ export function useProductFilters() {
       params.page = pagination.page
       params.limit = pagination.limit
 
-      // Gunakan axios instance dari services/api.js
       const response = await api.get('/products', { params })
       const data = response.data
-      
+
       setProducts(data.results || [])
       setPagination((prev) => ({
         ...prev,
@@ -72,7 +62,6 @@ export function useProductFilters() {
       }))
     } catch (err) {
       console.error('Error fetching products:', err)
-      // Tangani pesan error secara gracefully
       const errorMessage = err.response?.data?.message || err.message || 'Lỗi khi tải dữ liệu sản phẩm. Vui lòng thử lại sau.'
       setError(errorMessage)
       setProducts([])
@@ -81,36 +70,25 @@ export function useProductFilters() {
     }
   }, [filters, pagination.page, pagination.limit])
 
-  /**
-   * Fetch products ketika filter atau page berubah (dengan debounce)
-   */
+  // Debounce so rapid filter changes don't trigger a request per keystroke
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProducts()
-    }, 300) // 300ms debounce
+    }, 300)
 
     return () => clearTimeout(timer)
   }, [fetchProducts])
 
-  /**
-   * Update filter dan reset ke page 1
-   */
   const updateFilter = useCallback((filterKey, value) => {
     setFilters((prev) => ({ ...prev, [filterKey]: value }))
-    setPagination((prev) => ({ ...prev, page: 1 })) // Reset to page 1
+    setPagination((prev) => ({ ...prev, page: 1 }))
   }, [])
 
-  /**
-   * Update multiple filters sekaligus
-   */
   const updateFilters = useCallback((newFilters) => {
     setFilters((prev) => ({ ...prev, ...newFilters }))
     setPagination((prev) => ({ ...prev, page: 1 }))
   }, [])
 
-  /**
-   * Change current page
-   */
   const goToPage = useCallback((page) => {
     setPagination((prev) => ({
       ...prev,
@@ -118,9 +96,6 @@ export function useProductFilters() {
     }))
   }, [])
 
-  /**
-   * Reset all filters
-   */
   const resetFilters = useCallback(() => {
     setFilters({
       category: null,

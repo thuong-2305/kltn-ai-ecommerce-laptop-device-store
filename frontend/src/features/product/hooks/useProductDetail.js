@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../services/api'
 
-/**
- * useProductDetail - Custom hook to fetch a single product's full detail
- */
 export function useProductDetail(productId) {
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)

@@ -10,7 +10,6 @@ User = get_user_model()
 @database_sync_to_async
 def get_user_from_token(token_key):
     try:
-        # Validate simplejwt token
         token = AccessToken(token_key)
         user_id = token.payload.get('user_id')
         if user_id:
@@ -31,7 +30,6 @@ class JWTAuthMiddleware:
         # Close old db connections to prevent leaks
         close_old_connections()
         
-        # Parse query string
         query_string = scope.get('query_string', b'').decode()
         query_params = urllib.parse.parse_qs(query_string)
         

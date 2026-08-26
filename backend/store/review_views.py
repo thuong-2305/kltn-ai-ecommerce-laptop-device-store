@@ -27,7 +27,6 @@ def _get_user(request):
 def _serialize_review(review, request=None):
     from store.views import _build_media_url
     images = []
-    # Fetch related images from review.images relation
     for img in review.images.all():
         url = _build_media_url(request, img.image)
         if url:
@@ -50,6 +49,10 @@ def _serialize_review(review, request=None):
 
 
 # ─── GET /api/store/products/<pk>/reviews/  ──────────────────────
+# Query params (all optional, backward compatible):
+#   rating  - filter to a single star value (1-5); omitted/"all" = no filter
+#   limit   - page size, default 50, capped to 100
+#   offset  - pagination offset, default 0
 @require_GET
 def product_reviews_api(request, pk):
     try:
@@ -69,7 +72,7 @@ def product_reviews_api(request, pk):
     else:
         reviews_filter = Q(is_spam=False)
 
-    reviews = (
+    base_qs = (
         Review.objects
         .filter(product=product)
         .filter(reviews_filter)
@@ -78,11 +81,11 @@ def product_reviews_api(request, pk):
         .order_by('-review_date')
     )
 
-    # Aggregate
-    total = reviews.count()
+    # Aggregate over the full (unfiltered-by-rating) set.
+    total = base_qs.count()
     if total > 0:
         from django.db.models import Avg, Count, Q
-        agg = reviews.aggregate(
+        agg = base_qs.aggregate(
             avg=Avg('rating'),
             star_1=Count('id', filter=Q(rating=1)),
             star_2=Count('id', filter=Q(rating=2)),
@@ -102,12 +105,39 @@ def product_reviews_api(request, pk):
         avg_rating = 0
         breakdown = {i: 0 for i in range(1, 6)}
 
+    qs = base_qs
+    rating_param = request.GET.get('rating')
+    if rating_param and rating_param != 'all':
+        try:
+            rating_val = int(rating_param)
+        except (TypeError, ValueError):
+            rating_val = None
+        if rating_val in (1, 2, 3, 4, 5):
+            qs = qs.filter(rating=rating_val)
+
+    filtered_total = breakdown[rating_val] if rating_param and rating_param != 'all' and rating_val in (1, 2, 3, 4, 5) else total
+
+    try:
+        limit = int(request.GET.get('limit', 50))
+    except (TypeError, ValueError):
+        limit = 50
+    limit = max(1, min(limit, 100))
+    try:
+        offset = int(request.GET.get('offset', 0))
+    except (TypeError, ValueError):
+        offset = 0
+    offset = max(0, offset)
+
+    page = list(qs[offset:offset + limit])
+
     return JsonResponse({
         'product_id': pk,
         'total': total,
+        'filtered_total': filtered_total,
         'avg_rating': avg_rating,
         'breakdown': breakdown,
-        'reviews': [_serialize_review(r, request) for r in reviews[:50]],
+        'reviews': [_serialize_review(r, request) for r in page],
+        'has_more': offset + len(page) < filtered_total,
     })
 
 
@@ -142,7 +172,6 @@ def submit_review_api(request):
         comment = request.POST.get('comment', '').strip()
         title = request.POST.get('title', '').strip()
 
-    # Convert types
     try:
         if product_id is not None:
             product_id = int(product_id)
@@ -151,7 +180,6 @@ def submit_review_api(request):
     except (ValueError, TypeError):
         return JsonResponse({'error': 'Dữ liệu product_id hoặc rating không hợp lệ'}, status=400)
 
-    # Validation
     if not product_id:
         return JsonResponse({'error': 'Thiếu product_id'}, status=400)
     if not rating or rating not in range(1, 6):
@@ -164,22 +192,18 @@ def submit_review_api(request):
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Sản phẩm không tồn tại'}, status=404)
 
-    # Check if a review already exists for this user and product
     if Review.objects.filter(user=user, product=product).exists():
         return JsonResponse({'error': 'Bạn đã đánh giá sản phẩm này rồi và không thể chỉnh sửa.'}, status=400)
 
-    # Combine title + comment
     full_comment = f"{title}\n{comment}".strip() if title else comment
 
-    # Run sentiment analysis using our model
     from store.sentiment import SentimentAnalyzer
     sentiment_label, confidence = SentimentAnalyzer.analyze(full_comment, rating=rating)
 
-    # Run spam detection using our model from Hugging Face Hub
     from store.spam_detective import isSpam
     is_spam_detected = isSpam(full_comment)
 
-    # Upsert — one review per user per product
+    # One review per user per product
     review, created = Review.objects.update_or_create(
         user=user,
         product=product,
@@ -193,15 +217,12 @@ def submit_review_api(request):
         }
     )
 
-    # Handle image uploads
     uploaded_files = request.FILES.getlist('images') or request.FILES.getlist('image')
     if uploaded_files:
-        # Validate image sizes
         for file in uploaded_files[:5]:
             if file.size > MAX_REVIEW_IMAGE_SIZE:
                 return JsonResponse({'error': f'Kích thước ảnh "{file.name}" vượt quá 5MB'}, status=400)
         if not created:
-            # Remove existing review images if updating review
             review.images.all().delete()
         for file in uploaded_files[:5]:
             from .models import ReviewImage
@@ -245,7 +266,6 @@ def admin_reviews_api(request):
 
     from django.db.models import Q
     from django.core.paginator import Paginator
-
     search = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', 'all').strip()
 
@@ -267,7 +287,6 @@ def admin_reviews_api(request):
 
     reviews = reviews.order_by('-review_date', '-id')
 
-    # Pagination
     try:
         page = int(request.GET.get('page', 1))
         limit = int(request.GET.get('limit', 10))
@@ -566,4 +585,146 @@ def admin_review_detail_api(request, pk):
         return JsonResponse({'success': True, 'message': 'Xóa bình luận thành công'})
 
 
+# ─── GET /api/store/products/<pk>/public-sentiment/  ──────────────
+@require_GET
+def product_public_sentiment_api(request, pk):
+    """
+    Endpoint công khai (không yêu cầu xác thực).
+    Trả về tổng hợp cảm xúc sản phẩm cho người dùng thông thường.
+    Sử dụng Composite Sentiment Score: S = 0.6 × S_sentiment + 0.4 × S_rating
+    """
+    try:
+        product = Product.objects.get(pk=pk)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Sản phẩm không tồn tại'}, status=404)
 
+    from django.db.models import Avg, Count, Q
+
+    reviews = Review.objects.filter(product=product, is_spam=False)
+    total = reviews.count()
+
+    if total == 0:
+        return JsonResponse({'has_data': False, 'total': 0})
+
+    agg = reviews.aggregate(
+        avg_rating=Avg('rating'),
+        pos_count=Count('id', filter=Q(sentiment='positive')),
+        neu_count=Count('id', filter=Q(sentiment='neutral')),
+        neg_count=Count('id', filter=Q(sentiment='negative')),
+    )
+
+    pos_count = agg['pos_count'] or 0
+    neu_count = agg['neu_count'] or 0
+    neg_count = agg['neg_count'] or 0
+    avg_rating = float(agg['avg_rating'] or 3.0)
+
+    # ── Composite Sentiment Score (S₃) ──────────────────────────────
+    # S_sentiment ∈ [-1, +1]: tỷ lệ tích cực - tiêu cực
+    s_sentiment = (pos_count - neg_count) / total
+    # S_rating ∈ [-1, +1]: chuẩn hoá rating 1–5 sao về [-1, +1]
+    s_rating = (avg_rating - 3.0) / 2.0
+    # Trọng số: 60% AI text analysis, 40% star rating
+    score = 0.6 * s_sentiment + 0.4 * s_rating
+
+    # ── Ánh xạ sang nhãn ────────────────────────────────────────────
+    if score >= 0.6:
+        label = 'very_positive'
+        label_vn = 'Rất hài lòng'
+        description = 'Phần lớn khách hàng rất hài lòng về sản phẩm này.'
+        color = 'green'
+    elif score >= 0.25:
+        label = 'positive'
+        label_vn = 'Hài lòng'
+        description = 'Đa số khách hàng hài lòng và có trải nghiệm tốt với sản phẩm.'
+        color = 'green'
+    elif score >= -0.25:
+        label = 'neutral'
+        label_vn = 'Trung lập'
+        description = 'Ý kiến khách hàng tương đối cân bằng về sản phẩm.'
+        color = 'gray'
+    elif score >= -0.6:
+        label = 'negative'
+        label_vn = 'Không hài lòng'
+        description = 'Một số khách hàng cảm thấy chưa hài lòng về sản phẩm.'
+        color = 'red'
+    else:
+        label = 'very_negative'
+        label_vn = 'Rất không hài lòng'
+        description = 'Nhiều khách hàng không hài lòng về sản phẩm.'
+        color = 'red'
+
+    # ── Mức tin cậy dựa trên số lượng review ────────────────────────
+    if total >= 50:
+        confidence_level = 'high'
+        confidence_label = 'Cao'
+    elif total >= 15:
+        confidence_level = 'medium'
+        confidence_label = 'Trung bình'
+    elif total >= 5:
+        confidence_level = 'low'
+        confidence_label = 'Thấp'
+    else:
+        confidence_level = 'very_low'
+        confidence_label = 'Rất thấp'
+
+    # ── Trích xuất từ khoá nổi bật ───────────────────────────────────
+    positive_kw_list = ['mạnh', 'mượt', 'đẹp', 'nhẹ', 'tốt', 'mát', 'hài lòng', 'sắc nét', 'nhanh', 'bền', 'ổn định']
+    negative_kw_list = ['nóng', 'lag', 'chậm', 'đắt', 'mắc', 'ồn', 'tệ', 'lỗi', 'pin hụt', 'nặng', 'kém']
+
+    all_reviews_data = list(reviews.values('sentiment', 'comment', 'rating'))
+
+    pos_keywords = []
+    neg_keywords = []
+
+    for kw in positive_kw_list:
+        count = sum(
+            1 for r in all_reviews_data
+            if r['sentiment'] == 'positive' and kw in (r['comment'] or '').lower()
+        )
+        if count > 0:
+            pos_keywords.append({'keyword': kw, 'count': count})
+
+    for kw in negative_kw_list:
+        count = sum(
+            1 for r in all_reviews_data
+            if r['sentiment'] == 'negative' and kw in (r['comment'] or '').lower()
+        )
+        if count > 0:
+            neg_keywords.append({'keyword': kw, 'count': count})
+
+    pos_keywords.sort(key=lambda x: -x['count'])
+    neg_keywords.sort(key=lambda x: -x['count'])
+
+    return JsonResponse({
+        'has_data': True,
+        'total': total,
+        'avg_rating': round(avg_rating, 1),
+        'distribution': {
+            'positive': {
+                'count': pos_count,
+                'percent': round(pos_count / total * 100),
+            },
+            'neutral': {
+                'count': neu_count,
+                'percent': round(neu_count / total * 100),
+            },
+            'negative': {
+                'count': neg_count,
+                'percent': round(neg_count / total * 100),
+            },
+        },
+        'overall': {
+            'label': label,
+            'label_vn': label_vn,
+            'score': round(score, 3),
+            'description': description,
+            'color': color,
+            'confidence_level': confidence_level,
+            'confidence_label': confidence_label,
+        },
+        'keywords': {
+            'positive': pos_keywords[:5],
+            'negative': neg_keywords[:5],
+        },
+        'ai_disclaimer': 'Kết quả phân tích được thực hiện bởi mô hình AI DistilPhoBERT, có thể không phản ánh chính xác 100% nội dung bình luận.',
+    }, json_dumps_params={'ensure_ascii': False})

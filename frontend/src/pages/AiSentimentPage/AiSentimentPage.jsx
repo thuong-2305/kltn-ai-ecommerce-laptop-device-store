@@ -87,13 +87,12 @@ export default function AiSentimentPage() {
   const currentReviews = stats?.reviews || []
   const total = stats?.total || 0
 
-  // Filter logic
   const filteredReviews = currentReviews.filter(r => {
     const rSentiment = r.sentiment || 'neutral'
     const matchesSentiment = sentimentFilter === 'Tất cả cảm xúc' ||
-      (sentimentFilter === 'Tích cực' && rSentiment === 'positive') ||
-      (sentimentFilter === 'Trung tính' && rSentiment === 'neutral') ||
-      (sentimentFilter === 'Tiêu cực' && rSentiment === 'negative')
+      ((sentimentFilter === 'Tích cực' || sentimentFilter === 'Hài lòng') && rSentiment === 'positive') ||
+      ((sentimentFilter === 'Trung tính' || sentimentFilter === 'Trung lập') && rSentiment === 'neutral') ||
+      ((sentimentFilter === 'Tiêu cực' || sentimentFilter === 'Không hài lòng') && rSentiment === 'negative')
 
     const matchesRating = ratingFilter === 'Tất cả sao' ||
       r.rating === parseInt(ratingFilter)
@@ -253,9 +252,9 @@ export default function AiSentimentPage() {
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dx={-10} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                     <RechartsTooltip />
-                    <Line type="monotone" dataKey="pos" stroke="#10B981" strokeWidth={2} dot={false} name="Tích cực" />
-                    <Line type="monotone" dataKey="neu" stroke="#FBBF24" strokeWidth={2} dot={false} name="Trung tính" />
-                    <Line type="monotone" dataKey="neg" stroke="#EF4444" strokeWidth={2} dot={false} name="Tiêu cực" />
+                    <Line type="monotone" dataKey="pos" stroke="#10B981" strokeWidth={2} dot={false} name="Hài lòng" />
+                    <Line type="monotone" dataKey="neu" stroke="#FBBF24" strokeWidth={2} dot={false} name="Trung lập" />
+                    <Line type="monotone" dataKey="neg" stroke="#EF4444" strokeWidth={2} dot={false} name="Không hài lòng" />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
@@ -263,9 +262,9 @@ export default function AiSentimentPage() {
               )}
             </div>
             <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-100">
-              <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-green-500 rounded-full" /><span className="text-xs text-slate-600">Tích cực</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-yellow-400 rounded-full" /><span className="text-xs text-slate-600">Trung tính</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-red-500 rounded-full" /><span className="text-xs text-slate-600">Tiêu cực</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-green-500 rounded-full" /><span className="text-xs text-slate-600">Hài lòng</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-yellow-400 rounded-full" /><span className="text-xs text-slate-600">Trung lập</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-red-500 rounded-full" /><span className="text-xs text-slate-600">Không hài lòng</span></div>
             </div>
           </div>
 
@@ -278,7 +277,7 @@ export default function AiSentimentPage() {
             <div className="space-y-5 flex-1">
               <div>
                 <div className="flex items-center gap-1.5 text-green-600 font-bold text-sm mb-3">
-                  <Smile size={16} /> Tích cực
+                  <Smile size={16} /> Hài lòng
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {currentPosKeywords.length > 0 ? (
@@ -296,7 +295,7 @@ export default function AiSentimentPage() {
 
               <div>
                 <div className="flex items-center gap-1.5 text-red-500 font-bold text-sm mb-3">
-                  <Frown size={16} /> Tiêu cực
+                  <Frown size={16} /> Không hài lòng
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {currentNegKeywords.length > 0 ? (
@@ -323,9 +322,9 @@ export default function AiSentimentPage() {
               <div className="relative">
                 <select className="appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm text-slate-700 outline-none hover:border-slate-300 w-full sm:w-auto font-medium" value={sentimentFilter} onChange={e => setSentimentFilter(e.target.value)}>
                   <option>Tất cả cảm xúc</option>
-                  <option>Tích cực</option>
-                  <option>Trung tính</option>
-                  <option>Tiêu cực</option>
+                  <option>Hài lòng</option>
+                  <option>Trung lập</option>
+                  <option>Không hài lòng</option>
                 </select>
                 <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
@@ -371,7 +370,7 @@ export default function AiSentimentPage() {
                             review.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-700' :
                               'bg-slate-50 border-slate-200 text-slate-600'
                             }`}>
-                            {review.sentiment === 'positive' ? 'Tích cực' : review.sentiment === 'negative' ? 'Tiêu cực' : 'Trung lập'}
+                            {review.sentiment === 'positive' ? 'Hài lòng' : review.sentiment === 'negative' ? 'Không hài lòng' : 'Trung lập'}
                           </span>
                         </div>
 

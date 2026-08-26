@@ -160,7 +160,7 @@ function SiteHeader({ categories = [], cartCount = 0 }) {
     } finally {
       setImageLoading(false)
       if (fileInputRef.current) {
-        fileInputRef.current.value = '' // Clear input
+        fileInputRef.current.value = ''
       }
     }
   }

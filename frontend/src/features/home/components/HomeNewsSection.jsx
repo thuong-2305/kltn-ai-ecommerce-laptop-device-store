@@ -1,9 +1,5 @@
 import { SEMANTIC_CLASSES } from '../../../constants/designSystem'
 
-/**
- * NewsArticleCard - Reusable article card component
- * Features: Image preview, date, title, excerpt, hover effects
- */
 function NewsArticleCard({ article }) {
   return (
     <article className="group flex flex-col h-full rounded-2xl border border-slate-200/80 bg-white/80 shadow-light ring-0 transition-all duration-300 hover:border-slate-300 hover:shadow-standard hover:-translate-y-1">
@@ -57,10 +53,6 @@ function NewsArticleCard({ article }) {
   )
 }
 
-/**
- * HomeNewsSection - Main news/tech articles section
- * Layout: Responsive grid (3 desktop, 2 tablet, 1 mobile)
- */
 function HomeNewsSection({ newsCards = [] }) {
   return (
     <section className="mx-4.5 mb-8" id="news" aria-label="Tin tức công nghệ">

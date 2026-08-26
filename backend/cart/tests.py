@@ -9,24 +9,20 @@ User = get_user_model()
 
 class CartAPITests(APITestCase):
     def setUp(self):
-        # Create user
         self.user = User.objects.create_user(
             username='testuser',
             email='testuser@example.com',
             password='testpassword'
         )
-        
-        # Create category
+
         self.category = Category.objects.create(name='Laptops')
-        
-        # Create product
+
         self.product = Product.objects.create(
             name='Dell XPS 13',
             price=20000000,
             category=self.category
         )
-        
-        # Create variants
+
         self.variant_16gb = ProductVariant.objects.create(
             product=self.product,
             sku='DELL-XPS-13-16GB',
@@ -42,7 +38,6 @@ class CartAPITests(APITestCase):
             stock=5
         )
 
-        # URL patterns
         self.summary_url = reverse('cart_summary_api')
         self.add_url = reverse('cart_add_api')
         self.update_url = reverse('cart_update_api')

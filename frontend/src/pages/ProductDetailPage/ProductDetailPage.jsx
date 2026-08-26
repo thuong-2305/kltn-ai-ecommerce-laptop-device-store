@@ -171,10 +171,10 @@ function ProductDetailPage() {
                 )}
                 {activeTab === 'reviews' && (
                   <ProductReviews
-                    reviews={product.reviews}
                     averageRating={product.average_rating}
                     reviewCount={product.review_count}
                     ratingDistribution={product.rating_distribution}
+                    productId={product.id}
                   />
                 )}
               </div>

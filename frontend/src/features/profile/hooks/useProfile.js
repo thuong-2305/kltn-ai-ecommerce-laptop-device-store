@@ -30,11 +30,10 @@ export function useProfile() {
               const refreshData = await authApi.refreshToken(refresh)
               const newAccess = refreshData.access
               localStorage.setItem('ld_access', newAccess)
-              
-              // Retry fetching the profile with the new access token
+
               const retryData = await authApi.getProfile(newAccess)
               setProfile(retryData.profile)
-              return // Exit successfully
+              return
             } catch (refreshErr) {
               // Refresh token is also expired or invalid
               localStorage.removeItem('ld_access')

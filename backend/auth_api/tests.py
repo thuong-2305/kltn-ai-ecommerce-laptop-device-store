@@ -45,7 +45,6 @@ class AuthAPITests(APITestCase):
 
     def test_user_login(self):
         """Kiểm thử đăng nhập bằng email và username"""
-        # Tạo người dùng
         User.objects.create_user(
             username=self.user_data['username'],
             email=self.user_data['email'],
@@ -76,8 +75,7 @@ class AuthAPITests(APITestCase):
             email=self.user_data['email'],
             password=self.user_data['password']
         )
-        
-        # Lấy token đăng nhập
+
         login_response = self.client.post(self.login_url, {
             'username': self.user_data['email'],
             'password': self.user_data['password']

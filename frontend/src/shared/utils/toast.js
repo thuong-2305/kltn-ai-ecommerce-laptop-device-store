@@ -1,6 +1,3 @@
-/**
- * toast - Custom toast notification dispatcher helper
- */
 export const toast = {
   success: (message, duration = 3000) => {
     window.dispatchEvent(

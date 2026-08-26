@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User, Mail, Phone, MapPin, Loader2, Save } from 'lucide-react'
 import { SectionTitle, Toast, Field, inputCls } from './shared'
 
@@ -14,8 +14,7 @@ export function PersonalInfoTab({ profile, onUpdate }) {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
 
-  // Sync when profile changes
-  useState(() => {
+  useEffect(() => {
     if (profile) setForm({
       first_name: profile.user?.first_name || '',
       last_name: profile.user?.last_name || '',
@@ -23,7 +22,7 @@ export function PersonalInfoTab({ profile, onUpdate }) {
       phone: profile.phone || '',
       address: profile.address || '',
     })
-  })
+  }, [profile])
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 

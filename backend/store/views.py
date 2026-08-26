@@ -17,6 +17,7 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.response import Response
 from rest_framework import status
 from .utils import find_similar_products
+from .text_utils import clean_spec_text, parse_config_items
 
 from .models import Product, Category, Brand, ProductThumbnail, Review, SaleEvent
 
@@ -339,31 +340,14 @@ def product_detail_api(request, pk):
     data['description'] = product.description or ''
 
     # Parse config into structured list: "- CPU + Intel Core i7: 1235U + ..." → [{CPU: [{Intel Core i7: 1235U}]}, ...]
-    raw_config = product.config or ''
-    config_items = []
-    for segment in raw_config.split('- '):
-        segment = segment.strip()
-        if not segment:
-            continue
-        parts = [p.strip() for p in segment.split(' + ')]
-        if len(parts) >= 2:
-            label = parts[0]
-            specs = []
-            for kv in parts[1:]:
-                if ': ' in kv:
-                    k, v = kv.split(': ', 1)
-                    specs.append({'key': k.strip(), 'value': v.strip()})
-                else:
-                    specs.append({'key': kv, 'value': ''})
-            config_items.append({'label': label, 'specs': specs})
-    data['config'] = config_items
+    data['config'] = parse_config_items(product.config or '')
 
     # Serialize structured specifications
     specifications = [
         {
             'id': spec.id,
-            'key': spec.key.name,
-            'value': spec.value
+            'key': clean_spec_text(spec.key.name),
+            'value': clean_spec_text(spec.value)
         }
         for spec in product.specifications.all()
     ]

@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { ChevronDown } from 'lucide-react'
 
-/**
- * SortOptions - Premium custom sort dropdown component
- */
 function SortOptions({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)

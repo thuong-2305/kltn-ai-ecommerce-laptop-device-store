@@ -45,7 +45,6 @@ class LoginView(APIView):
         if not username_or_email or not password:
             return Response({'error': 'Vui lòng nhập tên đăng nhập/email và mật khẩu'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Authenticate by email or username
         user = None
         if '@' in username_or_email:
             try:
@@ -246,7 +245,7 @@ class SendOTPView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
 
-            # Rate limiting check: Limit to at most 1 OTP per 60 seconds
+            # Throttle: at most 1 OTP request per 60s
             from django.utils import timezone
             from datetime import timedelta
             try:
@@ -262,17 +261,15 @@ class SendOTPView(APIView):
             import secrets
             import hashlib
 
-            # Secure random generation using CSPRNG
+            # CSPRNG, not random.randint - this is a security token
             otp = f"{secrets.SystemRandom().randint(100000, 999999)}"
             hashed_otp = hashlib.sha256(otp.encode('utf-8')).hexdigest()
 
-            # Upsert OTP Verification record
             OTPVerification.objects.update_or_create(
                 email=email,
                 defaults={'otp': hashed_otp, 'attempts': 0}
             )
 
-            # Send Email
             subject = "Mã xác thực OTP đăng ký tài khoản"
             message = f"Mã OTP của bạn là: {otp}. Mã này sẽ hết hạn sau 5 phút."
             try:

@@ -90,7 +90,6 @@ class OrderAdmin(admin.ModelAdmin):
             return '-'
         return timezone.localtime(obj.date_ordered).strftime('%d/%m/%Y %H:%M:%S')
 
-# Register models to custom admin site
 custom_admin_site.register(ShippingAddress)
 custom_admin_site.register(OrderItem)
 custom_admin_site.register(Order, OrderAdmin)
